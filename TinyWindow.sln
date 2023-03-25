@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33424.131
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TinyWindow", "TinyWindow\TinyWindow.vcxproj", "{779BEE7C-EC06-4D8A-BF7E-0886DEFA6F68}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{779BEE7C-EC06-4D8A-BF7E-0886DEFA6F68}.Debug|x64.ActiveCfg = Debug|x64
+		{779BEE7C-EC06-4D8A-BF7E-0886DEFA6F68}.Debug|x64.Build.0 = Debug|x64
+		{779BEE7C-EC06-4D8A-BF7E-0886DEFA6F68}.Release|x64.ActiveCfg = Release|x64
+		{779BEE7C-EC06-4D8A-BF7E-0886DEFA6F68}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6D7CC5B3-68B6-44D2-B54D-5941042FDE48}
+	EndGlobalSection
+EndGlobal
