@@ -19,6 +19,8 @@
     <ClCompile Include="src_platform_layer_win\TW_Sound.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Input.h" />
+    <ClInclude Include="Primitives.h" />
     <ClInclude Include="scr_user\Components.h" />
     <ClInclude Include="scr_user\Level.h" />
     <ClInclude Include="scr_user\Maths.h" />
@@ -29,7 +31,6 @@
     <ClInclude Include="TW_PLATFORM_INTERFACE.h" />
     <ClInclude Include="src_platform_layer_win\TW_App.h" />
     <ClInclude Include="src_platform_layer_win\TW_Sound.h" />
-    <ClInclude Include="Types.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

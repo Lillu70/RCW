@@ -26,7 +26,7 @@ void Raycast_World::update()
 	u8 input = 0;
 	f32 delta_time = m_platform->get_frame_time();
 
-	if (controller.get(Buttons::BUT_Y).is_released() || m_platform->get_keyboard_state(Key_Codes::ESC).is_released())
+	if (controller.get(Buttons::BUT_Y).is_released() || m_platform->get_keyboard_state(Key_Code::ESC).is_released())
 		m_platform->close();
 
 	f32 turn_speed = 3.f;
@@ -37,10 +37,10 @@ void Raycast_World::update()
 		m_view.set_look_direction(m_view.look_direction += delta_time * turn_speed * r_stick * -1);
 	}
 	
-	if (m_platform->get_keyboard_button_down(Key_Codes::LEFT))
+	if (m_platform->get_keyboard_button_down(Key_Code::LEFT))
 		m_view.set_look_direction(m_view.look_direction += delta_time * turn_speed);
 	
-	if (m_platform->get_keyboard_button_down(Key_Codes::RIGHT))
+	if (m_platform->get_keyboard_button_down(Key_Code::RIGHT))
 		m_view.set_look_direction(m_view.look_direction -= delta_time * turn_speed);
 	
 	f32 movement_speed = 5.f;
@@ -66,33 +66,37 @@ void Raycast_World::update()
 	{
 		v2f movement_vector = { 0,0 };
 
-		if (controller.get(Buttons::DPAD_UP).is_down() || m_platform->get_keyboard_button_down(Key_Codes::W))
+		if (controller.get(Buttons::DPAD_UP).is_down() || m_platform->get_keyboard_button_down(Key_Code::W))
 		{
 			movement_vector.x -= m_view.look_cos;
 			movement_vector.y -= m_view.look_sin;
 		}
 
-		if (controller.get(Buttons::DPAD_DOWN).is_down() || m_platform->get_keyboard_button_down(Key_Codes::S))
+		if (controller.get(Buttons::DPAD_DOWN).is_down() || m_platform->get_keyboard_button_down(Key_Code::S))
 		{
 			movement_vector.x += m_view.look_cos;
 			movement_vector.y += m_view.look_sin;
 		}
 
-		if (controller.get(Buttons::DPAD_LEFT).is_down() || m_platform->get_keyboard_button_down(Key_Codes::A))
+		if (controller.get(Buttons::DPAD_LEFT).is_down() || m_platform->get_keyboard_button_down(Key_Code::A))
 		{
 			movement_vector.x -= cosf(m_view.look_direction + (f32)(PI / 2));
 			movement_vector.y -= sinf(m_view.look_direction + (f32)(PI / 2));
 		}
 
-		if (controller.get(Buttons::DPAD_RIGHT).is_down() || m_platform->get_keyboard_button_down(Key_Codes::D))
+		if (controller.get(Buttons::DPAD_RIGHT).is_down() || m_platform->get_keyboard_button_down(Key_Code::D))
 		{
 			movement_vector.x += cosf(m_view.look_direction + (f32)(PI / 2));
 			movement_vector.y += sinf(m_view.look_direction + (f32)(PI / 2));
 		}
 
-		movement_vector = movement_vector * delta_time * movement_speed;
-		m_view.position.x += movement_vector.y;
-		m_view.position.y += movement_vector.x;
+		if (movement_vector != v2f(0, 0))
+		{
+			movement_vector = normalize(movement_vector);
+			movement_vector = movement_vector * delta_time * movement_speed;
+			m_view.position.x += movement_vector.y;
+			m_view.position.y += movement_vector.x;
+		}
 	}
 
 	std::string text = std::to_string(controller.m_curr.l_thumb_x);
@@ -208,13 +212,6 @@ void Raycast_World::draw_first_person()
 
 	for (u32 w = 0; w < sector.wall_count; w++)
 	{
-		//const Wall& wall = *(sector.first_wall + w);
-		////const Wall_Info wi = sector_walls[w];
-		//
-		////Convert wall points to view space.
-		//v2f p1 = m_view.world_to_view(wall.p1);
-		//v2f p2 = m_view.world_to_view(wall.p2);
-		
 		Wall_Info wi = sector_walls[w];
 		v2f& p1 = wi.view_space_p1;
 		v2f& p2 = wi.view_space_p2;

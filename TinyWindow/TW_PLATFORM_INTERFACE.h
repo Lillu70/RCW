@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Types.h"
+#include "Input.h"
 
 class TW_Platform_Interface
 {
@@ -17,6 +17,6 @@ public:
 	virtual i32 get_frames_per_second()									= 0;
 	virtual u64 get_cycles_per_second()									= 0;
 	virtual void close()												= 0;
-	virtual Button_State get_keyboard_state(Key_Codes key_code)			= 0;
-	virtual bool get_keyboard_button_down(Key_Codes key_code)			= 0;
+	virtual Button_State get_keyboard_state(Key_Code key_code)			= 0;
+	virtual bool get_keyboard_button_down(Key_Code key_code)			= 0;
 };

@@ -3,7 +3,7 @@
 #define NOMINMAX
 #include <Windows.h>
 
-#include "../Types.h"
+#include "../Primitives.h"
 
 struct Sound_Output
 {

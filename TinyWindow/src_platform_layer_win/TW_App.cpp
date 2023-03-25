@@ -200,7 +200,7 @@ void TW_App::flush_events()
 
 	std::swap(m_curr_keyboard_state, m_prev_keyboard_state);
 
-	for (u32 i = 0; i < (u32)Key_Codes::KEY_CODE_COUNT; ++i)
+	for (u32 i = 0; i < (u32)Key_Code::KEY_CODE_COUNT; ++i)
 		m_curr_keyboard_state[i] = (GetKeyState(s_keycode_map[i]) & (1 << 15)) > 0;
 	
 	update_timer_counter();
@@ -286,12 +286,12 @@ Controller_State TW_App::get_controller_state(i32 idx)
 	return m_controller_state[idx];
 }
 
-Button_State TW_App::get_keyboard_state(Key_Codes key_code)
+Button_State TW_App::get_keyboard_state(Key_Code key_code)
 {
 	return Button_State(m_curr_keyboard_state[(i32)key_code], m_prev_keyboard_state[(i32)key_code]);
 }
 
-bool TW_App::get_keyboard_button_down(Key_Codes key_code)
+bool TW_App::get_keyboard_button_down(Key_Code key_code)
 {
 	return m_curr_keyboard_state[(i32)key_code];
 }
@@ -303,4 +303,3 @@ void TW_App::init_bitmap_info()
 	m_bitmap_info.bmiHeader.biBitCount = sizeof(i32) * 8;
 	m_bitmap_info.bmiHeader.biCompression = BI_RGB;
 }
-

@@ -2,8 +2,6 @@
 #include <dsound.h>
 #include <utility>
 
-constexpr f64 PI = 3.141592653589793;
-constexpr f64 TAU = 6.283185307179586;
 
 typedef HRESULT WINAPI d_sound_create(LPCGUID pcGuidDevice, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter);
 typedef HRESULT WINAPI d_sound_create_buffer(LPCDSBUFFERDESC pcDSBufferDesc, _Outptr_ LPDIRECTSOUNDBUFFER* ppDSBuffer, _Pre_null_ LPUNKNOWN pUnkOuter);

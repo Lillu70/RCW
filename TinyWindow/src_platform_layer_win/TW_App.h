@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../TW_PLATFORM_INTERFACE.h"
+
 #define NOMINMAX
 #include <Windows.h>
 
@@ -7,8 +9,6 @@
 
 #include <string>
 
-#include "../Types.h"
-#include "../TW_PLATFORM_INTERFACE.h"
 
 struct TW_App_Config
 {
@@ -48,8 +48,8 @@ public: //virtual interface to be passed into a client layer.
 	u64 get_cycles_per_second()		override	{ return m_cycles_per_second;	}
 	
 	Controller_State get_controller_state(i32 idx) override;
-	Button_State get_keyboard_state(Key_Codes key_code) override;
-	bool get_keyboard_button_down(Key_Codes key_code) override;
+	Button_State get_keyboard_state(Key_Code key_code) override;
+	bool get_keyboard_button_down(Key_Code key_code) override;
 
 public:
 	bool m_include_perf_metrics_in_title = true;
@@ -86,8 +86,8 @@ private:
 	
 	
 	Controller_State m_controller_state[s_max_controllers];
-	bool m_keyboard_state_a[(u64)Key_Codes::KEY_CODE_COUNT]{};
-	bool m_keyboard_state_b[(u64)Key_Codes::KEY_CODE_COUNT]{};
+	bool m_keyboard_state_a[(u64)Key_Code::KEY_CODE_COUNT]{};
+	bool m_keyboard_state_b[(u64)Key_Code::KEY_CODE_COUNT]{};
 	bool* m_curr_keyboard_state = m_keyboard_state_a;
 	bool* m_prev_keyboard_state = m_keyboard_state_b;
 	
@@ -115,15 +115,96 @@ private:
 	TW_Sound m_sound;
 };
 
-static constexpr i32 s_keycode_map[(u64)Key_Codes::KEY_CODE_COUNT] = 
+
+static constexpr i32 s_keycode_map[(u64)Key_Code::KEY_CODE_COUNT] = 
 {
-	'W',
+	'0',
+	'1',
+	'2',
+	'3',
+	'4',
+	'5',
+	'6',
+	'7',
+	'8',
+	'9',
+	VK_NUMPAD0,
+	VK_NUMPAD1,
+	VK_NUMPAD2,
+	VK_NUMPAD3,
+	VK_NUMPAD4,
+	VK_NUMPAD5,
+	VK_NUMPAD6,
+	VK_NUMPAD7,
+	VK_NUMPAD8,
+	VK_NUMPAD9,
+	VK_DIVIDE,
+	VK_MULTIPLY,
+	VK_ADD,
+	VK_SUBTRACT,
+	VK_DECIMAL,
 	'A',
-	'S',
+	'B',
+	'C',
 	'D',
+	'E',
+	'F',
+	'G',
+	'H',
+	'I',
+	'J',
+	'K',
+	'L',
+	'M',
+	'N',
+	'O',
+	'P',
+	'Q',
+	'R',
+	'S',
+	'T',
+	'U',
+	'V',
+	'W',
+	'X',
+	'Y',
+	'Z',
+	VK_F1,
+	VK_F2,
+	VK_F3,
+	VK_F4,
+	VK_F5,
+	VK_F6,
+	VK_F7,
+	VK_F8,
+	VK_F9,
+	VK_F10,
+	VK_F11,
+	VK_F12,
 	VK_LEFT,
 	VK_RIGHT,
-	VK_ESCAPE
+	VK_UP,
+	VK_DOWN,
+	VK_ESCAPE,
+	VK_LCONTROL,
+	VK_LSHIFT,
+	VK_LMENU,
+	VK_LWIN,
+	VK_LBUTTON,
+	VK_RCONTROL,
+	VK_RSHIFT,
+	VK_RMENU,
+	VK_RWIN,
+	VK_RBUTTON,
+	VK_SPACE,
+	VK_PRIOR,
+	VK_NEXT,
+	VK_END,
+	VK_HOME,
+	VK_INSERT,
+	VK_DELETE,
+	VK_BACK,
+	VK_RETURN
 };
 
 

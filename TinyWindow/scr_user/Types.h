@@ -1,9 +1,6 @@
 #pragma once
 
-#include "../Types.h"
-
-constexpr f64 PI = 3.141592653589793;
-constexpr f64 TAU = 6.283185307179586;
+#include "../Primitives.h"
 
 #define WHITE 0xffffffff
 #define BLACK 0xff000000
@@ -35,6 +32,8 @@ struct v2
 	v2<T> operator + (const T& comp)		const	{ return { x + comp,	y + comp	};	}
 	v2<T> operator - (const v2<T>& other)	const	{ return { x - other.x, y - other.y };	}
 	v2<T> operator - (const T& comp)		const	{ return { x - comp,	y - comp	};	}
+
+	bool operator != (const v2<T>& other)	const	{ return (x != other.x || y != other.y); }
 };
 
 typedef v2<i32> v2i;

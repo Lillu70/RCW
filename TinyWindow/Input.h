@@ -1,37 +1,102 @@
 #pragma once
+#include "Primitives.h"
 
 #include <cmath>
-#include <inttypes.h>
 
 
-typedef uint8_t		u8;
-typedef uint16_t	u16;
-typedef uint32_t	u32;
-typedef uint64_t	u64;
-
-typedef int8_t		i8;
-typedef int16_t		i16;
-typedef int32_t		i32;
-typedef int64_t		i64;
-
-typedef float		f32;
-typedef double		f64;
-
-typedef i32			b32;
-
-enum class Key_Codes
+enum class Key_Code
 {
-	W = 0,
+	NUM_0 = 0,
+	NUM_1,
+	NUM_2,
+	NUM_3,
+	NUM_4,
+	NUM_5,
+	NUM_6,
+	NUM_7,
+	NUM_8,
+	NUM_9,
+	NP_NUM_0,
+	NP_NUM_1,
+	NP_NUM_2,
+	NP_NUM_3,
+	NP_NUM_4,
+	NP_NUM_5,
+	NP_NUM_6,
+	NP_NUM_7,
+	NP_NUM_8,
+	NP_NUM_9,
+	NP_DIVIDE,
+	NP_MULTIPLY,
+	NP_ADD,
+	NP_SUBTRACT,
+	NP_DECIMAL,
 	A,
-	S,
+	B,
+	C,
 	D,
+	E,
+	F,
+	G,
+	H,
+	I,
+	J,
+	K,
+	L,
+	M,
+	N,
+	O,
+	P,
+	Q,
+	R,
+	S,
+	T,
+	U,
+	V,
+	W,
+	X,
+	Y,
+	Z,
+	F1,
+	F2,
+	F3,
+	F4,
+	F5,
+	F6,
+	F7,
+	F8,
+	F9,
+	F10,
+	F11,
+	F12,
 	LEFT,
 	RIGHT,
+	UP,
+	DOWN,
 	ESC,
+	LCTRL,
+	LSHIFT,
+	LALT,
+	LSYS,
+	LMOUSE,
+	RCTRL,
+	RSHIFT,
+	RALT,
+	RSYS,
+	RMOUSE,
+	SPACE,
+	PAGEUP,
+	PAGEDOWN,
+	END,
+	HOME,
+	INSERT,
+	DELETE,
+	BACK,
+	ENTER,
 	KEY_CODE_COUNT,
 };
 
-inline Key_Codes& operator++(Key_Codes& code) { *((i32*)&code) += 1; return code; }
+inline Key_Code& operator++(Key_Code& code) { *((i32*)&code) += 1; return code; }
 
 enum class Buttons
 {
@@ -55,10 +120,10 @@ struct Button_State
 {
 	Button_State(bool curr, bool prev) : m_curr(curr), m_prev(prev) {};
 
-	bool is_down()		{ return m_curr;			}
-	bool is_up()		{ return !m_curr;			}
-	bool is_pressed()	{ return !m_prev && m_curr; }
-	bool is_released()	{ return m_prev && !m_curr; }
+	bool is_down() { return m_curr; }
+	bool is_up() { return !m_curr; }
+	bool is_pressed() { return !m_prev && m_curr; }
+	bool is_released() { return m_prev && !m_curr; }
 
 private:
 	bool m_curr;
@@ -69,13 +134,13 @@ struct Controller_State
 {
 	struct Data
 	{
-		u16 button_states	= 0;
-		f32 l_thumb_x		= 0;
-		f32 l_thumb_y		= 0;
-		f32 r_thumb_x		= 0;
-		f32 r_thumb_y		= 0;
-		f32 l_trig			= 0;
-		f32 r_trig			= 0;
+		u16 button_states = 0;
+		f32 l_thumb_x = 0;
+		f32 l_thumb_y = 0;
+		f32 r_thumb_x = 0;
+		f32 r_thumb_y = 0;
+		f32 l_trig = 0;
+		f32 r_trig = 0;
 	};
 
 	Controller_State::Data m_curr;
