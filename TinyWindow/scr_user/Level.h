@@ -7,6 +7,7 @@
 struct Sector;
 
 
+
 struct Wall
 {
 	Wall() = default;
@@ -17,6 +18,14 @@ struct Wall
 	u32 color = WHITE;
 
 	Sector* portal = nullptr;
+};
+
+struct Wall_Info
+{
+	f32 depth;
+	v2f view_space_p1;
+	v2f view_space_p2;
+	Wall* wall;
 };
 
 struct Sector

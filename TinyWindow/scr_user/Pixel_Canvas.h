@@ -26,7 +26,7 @@ public:
 	void draw_line(v2i p1, v2i p2, u32 color);
 	void draw_filled_rect(v2i p1, v2i p2, u32 color);
 	void draw_rect(v2i p1, v2i p2, i32 thickeness, u32 color);
-	void draw_vertical_column(i32 x, i32 y_top, i32 y_bot, u32 color);
+	void draw_vertical_column(i32 x, i32 region_top, i32 region_bot, i32 column_top, i32 column_bot, u32 top_color, u32 mid_color, u32 bot_color);
 	void draw_text(const std::string& text, v2i coord, u32 color);
 	
 	bool is_on_canvas(v2i coord);

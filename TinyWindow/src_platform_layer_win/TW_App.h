@@ -116,6 +116,24 @@ private:
 };
 
 
+static constexpr i16 s_controller_map[(u64)Button::BUTTON_COUNT] =
+{
+	0x0001,	//0
+	0x0002,	//1
+	0x0004,	//2
+	0x0008,	//3
+	0x0010,	//4
+	0x0020,	//5
+	0x0040,	//6
+	0x0080,	//7
+	0x0100,	//8
+	0x0200,	//9
+	0x1000,	//10
+	0x2000,	//11
+	0x4000,	//12
+	0x8000  //13
+};
+
 static constexpr i32 s_keycode_map[(u64)Key_Code::KEY_CODE_COUNT] = 
 {
 	'0',
@@ -206,6 +224,3 @@ static constexpr i32 s_keycode_map[(u64)Key_Code::KEY_CODE_COUNT] =
 	VK_BACK,
 	VK_RETURN
 };
-
-
-

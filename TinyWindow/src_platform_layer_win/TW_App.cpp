@@ -151,7 +151,10 @@ void TW_App::update_controller_state()
 			if (XInputGetState(i, &xinput_state) == ERROR_SUCCESS)
 			{
 				auto& pad = xinput_state.Gamepad;
-				m_controller_state[i].m_curr.button_states = pad.wButtons;
+				m_controller_state[i].m_curr.button_states = 0;
+				for (u16 button_idx = 0; button_idx < (u16)Button::BUTTON_COUNT; ++button_idx)
+					if (s_controller_map[button_idx] & pad.wButtons)
+						m_controller_state[i].m_curr.button_states = m_controller_state[i].m_curr.button_states | (1 << button_idx);
 				
 				static constexpr u32 negative_max_range = 32768;
 				static constexpr u32 positive_max_range = 32767;

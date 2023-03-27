@@ -8,14 +8,15 @@ Raycast_World::Raycast_World(TW_Platform_Interface* platform) : m_platform(platf
 	{ s_default_pixel_buffer_width, s_default_pixel_buffer_height })
 {
 	m_level.m_walls[m_level.m_wall_count++] = Wall({ 10,10 }, { 10,20 }, WHITE);
-	m_level.m_walls[m_level.m_wall_count++] = Wall({ 10,20 }, { 20,20 }, RED);
-	m_level.m_walls[m_level.m_wall_count++] = Wall({ 20,20 }, { 20,10 }, BLUE);
-	m_level.m_walls[m_level.m_wall_count++] = Wall({ 10,10 }, { 20,10 }, GREEN);
+	m_level.m_walls[m_level.m_wall_count++] = Wall({ 10,20 }, { 20,20 }, WHITE);
+	m_level.m_walls[m_level.m_wall_count++] = Wall({ 20,20 }, { 20,10 }, WHITE);
+	m_level.m_walls[m_level.m_wall_count++] = Wall({ 10,10 }, { 20,10 }, WHITE);
 	m_level.m_sectors[m_level.m_sector_count++] = { m_level.m_walls.data(), m_level.m_wall_count };
 
 	m_view.position = { 15,15 };
 	m_view.set_look_direction((f32)m_view.look_direction);
-	m_view.scale = 1;
+	m_view.scale = 0.5;
+	m_view.calculate_view_segments();
 }
 
 void Raycast_World::update()
@@ -26,7 +27,7 @@ void Raycast_World::update()
 	u8 input = 0;
 	f32 delta_time = m_platform->get_frame_time();
 
-	if (controller.get(Buttons::BUT_Y).is_released() || m_platform->get_keyboard_state(Key_Code::ESC).is_released())
+	if (m_platform->get_keyboard_state(Key_Code::ESC).is_released())
 		m_platform->close();
 
 	f32 turn_speed = 3.f;
@@ -36,12 +37,14 @@ void Raycast_World::update()
 	{
 		m_view.set_look_direction(m_view.look_direction += delta_time * turn_speed * r_stick * -1);
 	}
-	
-	if (m_platform->get_keyboard_button_down(Key_Code::LEFT))
-		m_view.set_look_direction(m_view.look_direction += delta_time * turn_speed);
-	
-	if (m_platform->get_keyboard_button_down(Key_Code::RIGHT))
-		m_view.set_look_direction(m_view.look_direction -= delta_time * turn_speed);
+	else
+	{
+		if (m_platform->get_keyboard_button_down(Key_Code::LEFT))
+			m_view.set_look_direction(m_view.look_direction += delta_time * turn_speed);
+
+		if (m_platform->get_keyboard_button_down(Key_Code::RIGHT))
+			m_view.set_look_direction(m_view.look_direction -= delta_time * turn_speed);
+	}
 	
 	f32 movement_speed = 5.f;
 
@@ -66,25 +69,25 @@ void Raycast_World::update()
 	{
 		v2f movement_vector = { 0,0 };
 
-		if (controller.get(Buttons::DPAD_UP).is_down() || m_platform->get_keyboard_button_down(Key_Code::W))
+		if (controller.get_button_down(Button::DPAD_UP) || m_platform->get_keyboard_button_down(Key_Code::W))
 		{
 			movement_vector.x -= m_view.look_cos;
 			movement_vector.y -= m_view.look_sin;
 		}
 
-		if (controller.get(Buttons::DPAD_DOWN).is_down() || m_platform->get_keyboard_button_down(Key_Code::S))
+		if (controller.get_button_down(Button::DPAD_DOWN) || m_platform->get_keyboard_button_down(Key_Code::S))
 		{
 			movement_vector.x += m_view.look_cos;
 			movement_vector.y += m_view.look_sin;
 		}
 
-		if (controller.get(Buttons::DPAD_LEFT).is_down() || m_platform->get_keyboard_button_down(Key_Code::A))
+		if (controller.get_button_down(Button::DPAD_LEFT) || m_platform->get_keyboard_button_down(Key_Code::A))
 		{
 			movement_vector.x -= cosf(m_view.look_direction + (f32)(PI / 2));
 			movement_vector.y -= sinf(m_view.look_direction + (f32)(PI / 2));
 		}
 
-		if (controller.get(Buttons::DPAD_RIGHT).is_down() || m_platform->get_keyboard_button_down(Key_Code::D))
+		if (controller.get_button_down(Button::DPAD_RIGHT) || m_platform->get_keyboard_button_down(Key_Code::D))
 		{
 			movement_vector.x += cosf(m_view.look_direction + (f32)(PI / 2));
 			movement_vector.y += sinf(m_view.look_direction + (f32)(PI / 2));
@@ -99,11 +102,17 @@ void Raycast_World::update()
 		}
 	}
 
-	std::string text = std::to_string(controller.m_curr.l_thumb_x);
-	m_canvas.draw_text(text, { 10,10 }, WHITE);
-
 	m_canvas.clear(0);
-	draw_first_person();
+	
+	if(m_platform->get_keyboard_state(Key_Code::SPACE).is_up())
+		draw_sector(m_level.m_sectors[0], m_canvas.width() /4 , m_canvas.width() - m_canvas.width() / 4, 0, m_canvas.height() - 1, 0, m_canvas.height() - 1);
+	else
+	{
+		draw_sector(m_level.m_sectors[0], 0, m_canvas.width(), 0, m_canvas.height() - 1,0, m_canvas.height() - 1);
+	}
+
+
+	//draw_first_person();
 	draw_top_down();
 }
 
@@ -113,18 +122,17 @@ void Raycast_World::draw_top_down()
 
 	View td_view = m_view;
 	td_view.scale = 10;
-
-	f32 hfov = m_view.fov / 2;
+	td_view.calculate_view_segments();
 
 	m_canvas.draw_circle(half_screen.As<i32>(), 5, 3, 0xffff00ff);
 	m_canvas.draw_line(half_screen.As<i32>(), v2f(half_screen.x, half_screen.y - 50).As<i32>(), 0xfff00fff);
 	
 	//Draw lines to vizualize the fov cone
-	m_canvas.draw_line(half_screen.As<i32>(), v2f(half_screen.x + cosf(-(f32)PI / 2 - hfov) * MAX_DRAW_DISTANCE * td_view.scale,
-		half_screen.y + sinf(-(f32)PI / 2 - hfov) * MAX_DRAW_DISTANCE * td_view.scale).As<i32>(), put_color(100, 100, 100));
+	m_canvas.draw_line(half_screen.As<i32>(), v2f(half_screen.x + cosf(-(f32)PI / 2 - m_view.hfov) * MAX_DRAW_DISTANCE * td_view.scale,
+		half_screen.y + sinf(-(f32)PI / 2 - m_view.hfov) * MAX_DRAW_DISTANCE * td_view.scale).As<i32>(), put_color(100, 100, 100));
 
-	m_canvas.draw_line(half_screen.As<i32>(), v2f(half_screen.x + cosf(-(f32)PI / 2 + hfov) * MAX_DRAW_DISTANCE * td_view.scale,
-		half_screen.y + sinf(-(f32)PI / 2 + hfov) * MAX_DRAW_DISTANCE * td_view.scale).As<i32>(), put_color(100, 100, 100));
+	m_canvas.draw_line(half_screen.As<i32>(), v2f(half_screen.x + cosf(-(f32)PI / 2 + m_view.hfov) * MAX_DRAW_DISTANCE * td_view.scale,
+		half_screen.y + sinf(-(f32)PI / 2 + m_view.hfov) * MAX_DRAW_DISTANCE * td_view.scale).As<i32>(), put_color(100, 100, 100));
 	// ---
 
 
@@ -144,7 +152,6 @@ void Raycast_World::draw_top_down()
 				wcolor = put_color(10, 128, 255);
 
 			m_canvas.draw_line((half_screen + flip_y(p1)).As<i32>(), (half_screen + flip_y(p2)).As<i32>(), wcolor);
-			
 		}
 	}
 }
@@ -152,51 +159,13 @@ void Raycast_World::draw_top_down()
 void Raycast_World::draw_first_person()
 {
 	v2f half_screen = m_canvas.dimensions().As<f32>() / 2;
-	f32 hfov = m_view.fov / 2;
-
-	v2f lv_segment(cosf((-hfov - ((f32)PI / 2))) * MAX_DRAW_DISTANCE * m_view.scale, abs(sinf(-hfov - ((f32)PI / 2))) * MAX_DRAW_DISTANCE * m_view.scale);
-	v2f rv_segment(cosf((+hfov - ((f32)PI / 2))) * MAX_DRAW_DISTANCE * m_view.scale, abs(sinf(+hfov - ((f32)PI / 2))) * MAX_DRAW_DISTANCE * m_view.scale);
 
 	Sector& sector = m_level.m_sectors[0];
 	
-	struct Wall_Info
-	{
-		f32 depth;
-		v2f view_space_p1;
-		v2f view_space_p2;
-		Wall* wall;
-	};
 	std::array<Wall_Info, Level::s_sector_wall_max> sector_walls{};
 
 #if 1
-	for (Wall* wp = sector.first_wall; wp < sector.first_wall + sector.wall_count; wp++)
-	{
-		Wall_Info wi;
-		wi.wall = wp;
-		wi.view_space_p1 = m_view.world_to_view(wp->p1);
-		wi.view_space_p2 = m_view.world_to_view(wp->p2);
-		wi.depth = (wi.view_space_p1.y + wi.view_space_p2.y) / 2;
-		
-		//And idx is effectively the size of the sector_walls array as well.
-		u32 idx = (u32)(wp - sector.first_wall);
-		
-		//Therefore by default we insert at the top.
-		u32 insert_at = idx;
-
-		for (u32 i = 0; i < idx; i++)
-			if (sector_walls[i].depth < wi.depth)
-			{
-				insert_at = i;
-
-				//Shift down all the elements with smaller depth value.
-				for (u32 shift_idx = idx; shift_idx > i; shift_idx--)
-					sector_walls[shift_idx] = sector_walls[(i32)shift_idx - 1];
-				
-				break;
-			}
-		
-		sector_walls[insert_at] = wi;	
-	}
+	sort_sector_walls(sector_walls, sector);
 #else
 	for (Wall* wp = sector.first_wall; wp < sector.first_wall + sector.wall_count; wp++)
 	{
@@ -233,23 +202,23 @@ void Raycast_World::draw_first_person()
 		if (p2.y > 0) r2 = abs(atanf(p2.x / p2.y));
 
 		//Both points lay outside of the fov cone.
-		if (r1 > hfov && r2 > hfov)
+		if (r1 > m_view.hfov && r2 > m_view.hfov)
 		{
-			if (p1.x > 0 || p2.x < 0 || !line_intersection({ 0,0 }, lv_segment, p1, p2, p1) || !line_intersection({ 0,0 }, rv_segment, p1, p2, p2) )
+			if (p1.x > 0 || p2.x < 0 || !line_intersection({ 0,0 }, m_view.lv_segment, p1, p2, p1) || !line_intersection({ 0,0 }, m_view.rv_segment, p1, p2, p2) )
 				continue;
 		}
 
 		//left point is outside, but right point is inside.
-		else if (r1 > hfov && r2 <= hfov)
+		else if (r1 > m_view.hfov && r2 <= m_view.hfov)
 		{
-			if (!line_intersection({ 0,0 }, lv_segment, p1, p2, p1) && !line_intersection({ 0,0 }, rv_segment, p1, p2, p1))
+			if (!line_intersection({ 0,0 }, m_view.lv_segment, p1, p2, p1) && !line_intersection({ 0,0 }, m_view.rv_segment, p1, p2, p1))
 				continue;
 		}
 
 		//right point is outside, but the left point is inside.
-		else if (r1 <= hfov && r2 > hfov)
+		else if (r1 <= m_view.hfov && r2 > m_view.hfov)
 		{
-			if (!line_intersection({ 0,0 }, lv_segment, p1, p2, p2) && !line_intersection({ 0,0 }, rv_segment, p1, p2, p2))
+			if (!line_intersection({ 0,0 }, m_view.lv_segment, p1, p2, p2) && !line_intersection({ 0,0 }, m_view.rv_segment, p1, p2, p2))
 				continue;
 		}
 			
@@ -260,6 +229,9 @@ void Raycast_World::draw_first_person()
 		//Calculate the start and end x values relative to screen size.
 		i32 x1 = (i32)((0.5f + r1 / m_view.fov) * m_canvas.width());
 		i32 x2 = (i32)((0.5f + r2 / m_view.fov) * m_canvas.width());
+
+		if (x1 == x2)
+			continue;
 
 		const i32 h1 = (i32)(sector.height() / p1.y) / 2;
 		const i32 h2 = (i32)(sector.height() / p2.y) / 2;
@@ -290,11 +262,170 @@ void Raycast_World::draw_first_person()
 		{
 			i32 y1 = (i32)(top1.y + m_top * (x - top1.x));
 			i32 y2 = (i32)(bot1.y + m_bot * (x - bot1.x));
-			m_canvas.draw_vertical_column(x, y1,  y2, multiply_accross_color_channels(wi.wall->color, shading_factor));
+			u32 wall_color = multiply_accross_color_channels(wi.wall->color, shading_factor);
+			u32 ceiling_color = put_color(0,0,255);
+			u32 floor_color = put_color(0,255,0);
+			m_canvas.draw_vertical_column(x, 0, (i32)m_canvas.height() - 1, y1, y2, ceiling_color, wall_color, floor_color);
+		}
+	}
+
+}
+
+void Raycast_World::draw_sector(Sector& sector, i32 x_min, i32 x_max, i32 left_y_top, i32 left_y_bot, i32 right_y_top, i32 right_y_bot)
+{
+	std::array<Wall_Info, Level::s_sector_wall_max> sector_walls;
+
+	i32 half_screen_height = (i32)m_canvas.height() / 2;
+
+	sort_sector_walls(sector_walls, sector);
+
+	for (u32 w = 0; w < sector.wall_count; w++)
+	{
+		Wall_Info wi = sector_walls[w];
+		v2f& p1 = wi.view_space_p1;
+		v2f& p2 = wi.view_space_p2;
+	
+		//If both points are behind the view, continue.
+		if (p1.y <= 0 && p2.y <= 0)
+			continue;
+
+		//p1 is the left most point.
+		if (p2.x < p1.x)
+			std::swap(p1, p2);
+
+		//Initialize the angle to be outside of the fov.
+		f32 r1 = m_view.fov;
+		f32 r2 = m_view.fov;
+
+		//If the point is in front of the camera, find the angle relative to the camera.
+		if (p1.y > 0) r1 = abs(atanf(p1.x / p1.y));
+		if (p2.y > 0) r2 = abs(atanf(p2.x / p2.y));
+
+		//Both points lay outside of the fov cone.
+		if (r1 > m_view.hfov && r2 > m_view.hfov)
+		{
+			if (p1.x > 0 || p2.x < 0 || !line_intersection({ 0,0 }, m_view.lv_segment, p1, p2, p1) || !line_intersection({ 0,0 }, m_view.rv_segment, p1, p2, p2))
+				continue;
+		}
+
+		//left point is outside, but right point is inside.
+		else if (r1 > m_view.hfov && r2 <= m_view.hfov)
+		{
+			if (!line_intersection({ 0,0 }, m_view.lv_segment, p1, p2, p1) && !line_intersection({ 0,0 }, m_view.rv_segment, p1, p2, p1))
+				continue;
+		}
+
+		//right point is outside, but the left point is inside.
+		else if (r1 <= m_view.hfov && r2 > m_view.hfov)
+		{
+			if (!line_intersection({ 0,0 }, m_view.lv_segment, p1, p2, p2) && !line_intersection({ 0,0 }, m_view.rv_segment, p1, p2, p2))
+				continue;
+		}
+
+		//Recalculate angels to origin.
+		r1 = atanf(p1.x / p1.y);
+		r2 = atanf(p2.x / p2.y);
+
+		//calculate the start and end x values relative to screen size.
+		i32 x1  = (i32)((0.5f + r1 / m_view.fov) * m_canvas.width()); //hmm???
+		i32 x2 = (i32)((0.5f + r2 / m_view.fov) * m_canvas.width()); //hmm??? <- i think this is still done like so, but now we have to snap to min and max... and skip if outside of min and max!
+		
+		if (x2 < x1)
+		{
+			std::swap(x1, x2);
+			std::swap(p1, p2);
+		}
+
+		if (x1 > x_max || x2 < x_min)
+			continue;
+
+		if (x1 < x_min)
+		{
+			//p1.y = linear_interpolation({ (f32)x1, p1.y }, { (f32)x2, p2.y }, (f32)x_min);
+			x1 = x_min;
+		}
+		
+		if (x2 > x_max)
+		{
+			//p2.y = linear_interpolation({ (f32)x1, p1.y }, { (f32)x2, p2.y }, (f32)x_max);
+			x2 = x_max;
+		}
+
+		if (x1 == x2)
+			continue;
+		
+		const i32 h1  = (i32)(sector.height() / p1.y) / 2;
+		const i32 h2 = (i32)(sector.height() / p2.y) / 2;
+		
+		const f32 eye_to_sector_ratio = (f32)m_view.look_height / sector.height();
+		//											^ THIS PART NEEDS TO BE RELATIVE TO THE SECTOR WHERE THIS IS BEING VIEWED FROM!
+
+		v2i bot1{ x1,  (i32)(half_screen_height + h1 * eye_to_sector_ratio) };
+		v2i bot2{ x2,  (i32)(half_screen_height + h2 * eye_to_sector_ratio) };
+		v2i top1{ x1,  bot1.y - h1 };
+		v2i top2{ x2,  bot2.y - h2 };
+		
+		//loop form left to right drawring linearly interpolated columns, between segment end points.
+		const f32 m_top = slope(top1, top2);
+		const f32 m_bot = slope(bot1, bot2);
+
+		//Shading factor is in range 0.5... 1.0;
+		const f32 shading_factor = 1.f - std::min(0.2f, std::abs(m_top));
+
+		int lol = 0; 
+		for (i32 x = x1; x < x2; x++)
+		{
+			i32 y1 = (i32)(top1.y + m_top * (x - top1.x));
+			i32 lit = linear_interpolation({ x_min,left_y_top }, { x_max, right_y_top }, x);
+	
+			
+			i32 y2 = (i32)(bot1.y + m_bot * (x - bot1.x));
+			i32 lib = linear_interpolation({ x_min, left_y_bot }, { x_max, right_y_bot }, x);
+	
+			
+			u32 wall_color = multiply_accross_color_channels(wi.wall->color, shading_factor);
+			u32 ceiling_color = put_color(0, 0, 255);
+			u32 floor_color = put_color(0, 255, 0);
+			m_canvas.draw_vertical_column(x, lit, lib, y1, y2, ceiling_color, wall_color, floor_color);
+
+			y1 += 1;
+			
+			lol += y1;
 		}
 	}
 }
 
+void Raycast_World::sort_sector_walls(std::array<Wall_Info, Level::s_sector_wall_max>& output, Sector& sector)
+{
+	for (Wall* wp = sector.first_wall; wp < sector.first_wall + sector.wall_count; wp++)
+	{
+		Wall_Info wi;
+		wi.wall = wp;
+		wi.view_space_p1 = m_view.world_to_view(wp->p1);
+		wi.view_space_p2 = m_view.world_to_view(wp->p2);
+		wi.depth = (wi.view_space_p1.y + wi.view_space_p2.y) / 2;
+
+		//And idx is effectively the size of the sector_walls array as well.
+		i32 idx = (u32)(wp - sector.first_wall);
+
+		//Therefore by default we insert at the top.
+		i32 insert_at = idx;
+
+		for (i32 i = 0; i < idx; i++)
+			if (output[i].depth < wi.depth)
+			{
+				insert_at = i;
+
+				//Shift down all the elements with smaller depth value.
+				for (u32 shift_idx = idx; shift_idx > i; shift_idx--)
+					output[shift_idx] = output[shift_idx - 1];
+
+				break;
+			}
+
+		output[insert_at] = wi;
+	}
+}
 
 bool Raycast_World::is_segment_on_screen(const v2f sp_p1, const v2f sp_p2, const f32 max_distance, const View& view)
 {
