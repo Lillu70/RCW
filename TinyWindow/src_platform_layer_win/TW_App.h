@@ -33,13 +33,13 @@ public:
 	void update_surface();
 
 public: //virtual interface to be passed into a client layer.
-	u32* resize_pixel_buffer(i32 new_width, i32 new_height) override;
+	u32* do_resize_pixel_buffer(i32 new_width, i32 new_height) override;
 
 	i64 get_cpu_time_stamp() override;
 
-	void close()					override	{ m_app_running = false;		}
-	bool is_running()				override	{ return m_app_running;			}
-	bool is_focused()				override	{ return m_is_focused;			}
+	void do_close()					override	{ m_app_running = false;		}
+	bool get_is_running()			override	{ return m_app_running;			}
+	bool get_is_focused()			override	{ return m_is_focused;			}
 	u32* get_pixel_buffer()			override	{ return m_bitmap_mem;			}
 	i32 get_pixel_buffer_width() 	override	{ return m_bitmap_width;		}
 	i32 get_pixel_buffer_height() 	override	{ return m_bitmap_height;		}

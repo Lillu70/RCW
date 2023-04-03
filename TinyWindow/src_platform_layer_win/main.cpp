@@ -11,7 +11,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE hPrevInstance, LPSTR lpCmdLine,
 
 	Raycast_World game(&app);
 
-	while (app.is_running())
+	while (app.get_is_running())
 	{
 		app.flush_events();
 

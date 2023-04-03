@@ -128,6 +128,10 @@ void Pixel_Canvas::draw_vertical_column(i32 x, i32 region_top, i32 region_bot, i
 	i32 og_y1 = column_top;
 	i32 og_y2 = column_bot;
 
+	region_top = std::max(0, region_top);
+	region_bot = std::min((i32)m_dimensions.y -1, region_bot);
+	
+
 	column_bot = std::min(region_bot, column_bot);
 	column_top = std::max(region_top, column_top);
 

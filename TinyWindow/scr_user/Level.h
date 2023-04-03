@@ -13,11 +13,13 @@ struct Wall
 	Wall() = default;
 	Wall(v2f p1, v2f p2) : p1(p1), p2(p2) {}
 	Wall(v2f p1, v2f p2, u32 c) : p1(p1), p2(p2), color(c) {}
+	Wall(v2f p1, v2f p2, Sector* portal, Wall* portal_wall) : portal(portal) , portal_wall(portal_wall) {}
 
 	v2f p1, p2;
 	u32 color = WHITE;
 
 	Sector* portal = nullptr;
+	Wall* portal_wall = nullptr;
 };
 
 struct Wall_Info
@@ -26,6 +28,18 @@ struct Wall_Info
 	v2f view_space_p1;
 	v2f view_space_p2;
 	Wall* wall;
+};
+
+struct Render_Sector_Info
+{
+	i32 x_min;
+	i32 x_max;
+	i32 left_y_top;
+	i32 left_y_bot;
+	i32 right_y_top;
+	i32 right_y_bot;
+	i32 height_offset;
+	Wall* ignore_target;
 };
 
 struct Sector

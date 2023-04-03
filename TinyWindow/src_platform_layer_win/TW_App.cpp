@@ -209,7 +209,7 @@ void TW_App::flush_events()
 	update_timer_counter();
 }
 
-u32* TW_App::resize_pixel_buffer(i32 new_width, i32 new_height)
+u32* TW_App::do_resize_pixel_buffer(i32 new_width, i32 new_height)
 {
 	TW_ASSERT(new_width >= 0, "Pixel buffer width has to be a value greater than 0");
 	TW_ASSERT(new_height >= 0, "Pixel buffer hegith has to be a value greater than 0");
