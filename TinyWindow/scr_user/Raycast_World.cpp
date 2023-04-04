@@ -1,12 +1,13 @@
 #include "Raycast_World.h"
 #include <iostream>
 
-static constexpr i32 s_default_pixel_buffer_width = 620;
-static constexpr i32 s_default_pixel_buffer_height = 480;
+static constexpr i32 s_default_pixel_buffer_width	= 620;
+static constexpr i32 s_default_pixel_buffer_height	= 480;
 
 Raycast_World::Raycast_World(TW_Platform_Interface* platform) : m_platform(platform), m_canvas(platform->do_resize_pixel_buffer(s_default_pixel_buffer_width, s_default_pixel_buffer_height),
 	{ s_default_pixel_buffer_width, s_default_pixel_buffer_height })
 {
+#if 1
 	m_level.m_walls[m_level.m_wall_count++] = Wall({ 10,10 }, { 15,10 }, WHITE);
 	m_level.m_walls[m_level.m_wall_count++] = Wall({ 15,10 }, { 20,10 }, put_color(128,0,128));
 	Wall* portal_wall = &m_level.m_walls[m_level.m_wall_count - 1];
@@ -19,21 +20,25 @@ Raycast_World::Raycast_World(TW_Platform_Interface* platform) : m_platform(platf
 	m_level.m_sectors[m_level.m_sector_count++] = { m_level.m_walls.data(), m_level.m_wall_count };
 
 	Wall* sector_start = &m_level.m_walls[m_level.m_wall_count];
-	m_level.m_walls[m_level.m_wall_count++] = Wall({ 15,10 }, { 20,10 }, put_color(128, 0, 128));
-	m_level.m_walls[m_level.m_wall_count++] = Wall({ 20,10 }, { 20, 0 }, WHITE);
-	m_level.m_walls[m_level.m_wall_count++] = Wall({ 20,0 },  { 12, 0 }, WHITE);	
+	m_level.m_walls[m_level.m_wall_count++] = Wall({ 15,10 }, { 20,10  }, put_color(128, 0, 128));
+	m_level.m_walls[m_level.m_wall_count++] = Wall({ 20,10 }, { 20, 0  }, WHITE);
+	m_level.m_walls[m_level.m_wall_count++] = Wall({ 20,0 },  { 12, 0  }, WHITE);	
 	m_level.m_walls[m_level.m_wall_count++] = Wall({ 12,0 },  { 15, 10 }, WHITE);
 
 	m_level.m_sectors[m_level.m_sector_count++] = 
 		{ sector_start, m_level.m_wall_count - (m_level.m_sectors[0].wall_count - 1) };
-	
 	portal_wall->portal = &m_level.m_sectors[1];
 	portal_wall->portal_wall = sector_start;
+
+#else
+	m_level.m_walls[m_level.m_wall_count++] = Wall({ -10,10 }, { 150,10 }, WHITE);
+	m_level.m_sectors[m_level.m_sector_count++] = { m_level.m_walls.data(), m_level.m_wall_count };
+#endif
 
 	m_player_sector = &m_level.m_sectors[0];
 
 	m_view.position = { 15,15 };
-	m_view.set_look_direction((f32)m_view.look_direction);
+	m_view.set_look_direction(5.56f);
 	m_view.scale = 0.5;
 	m_view.calculate_view_segments();
 }
@@ -42,8 +47,23 @@ void Raycast_World::update()
 {
 	if (!m_platform->get_is_focused()) return;
 	
+	process_input();
+
+	//m_canvas.clear(0);
+	
+	draw_first_person();
+	
+	draw_top_down();
+
+	m_canvas.draw_text(std::to_string(m_view.look_direction), {10,10}, WHITE);
+}
+
+void Raycast_World::process_input()
+{
+	if (m_platform->get_keyboard_state(Key_Code::F11).is_released())
+		m_platform->set_fullscreen(!m_platform->get_is_fullscreen());
+
 	Controller_State controller = m_platform->get_controller_state();
-	u8 input = 0;
 	f32 delta_time = m_platform->get_frame_time();
 
 	if (m_platform->get_keyboard_state(Key_Code::ESC).is_released())
@@ -64,23 +84,23 @@ void Raycast_World::update()
 		if (m_platform->get_keyboard_button_down(Key_Code::RIGHT))
 			m_view.set_look_direction(m_view.look_direction -= delta_time * turn_speed);
 	}
-	
+
 	f32 movement_speed = 5.f;
 
 	f32 stick_val_x = 0; f32 stick_val_y = 0;
 	bool stick_b_x = controller.get_left_stick_x(stick_val_x);
 	bool stick_b_y = controller.get_left_stick_y(stick_val_y);
-	
+
 	if (stick_b_x || stick_b_y)
 	{
 		v2f movement_vector = { 0,0 };
 
 		movement_vector.x += m_view.look_cos * stick_val_y * movement_speed * delta_time * -1;
 		movement_vector.y += m_view.look_sin * stick_val_y * movement_speed * delta_time * -1;
-	
+
 		movement_vector.x -= cosf(m_view.look_direction + (f32)(PI / 2)) * stick_val_x * movement_speed * delta_time * -1;
 		movement_vector.y -= sinf(m_view.look_direction + (f32)(PI / 2)) * stick_val_x * movement_speed * delta_time * -1;
-		
+
 		m_view.position.x += movement_vector.y;
 		m_view.position.y += movement_vector.x;
 	}
@@ -121,11 +141,6 @@ void Raycast_World::update()
 		}
 	}
 
-
-	m_canvas.clear(0);
-
-	draw_first_person();
-	draw_top_down();
 }
 
 void Raycast_World::draw_top_down()
@@ -133,7 +148,7 @@ void Raycast_World::draw_top_down()
 	v2f half_screen = m_canvas.dimensions().As<f32>() / 2;
 
 	View td_view = m_view;
-	td_view.scale = 10;
+	td_view.scale = 10.f;
 	td_view.calculate_view_segments();
 
 	m_canvas.draw_circle(half_screen.As<i32>(), 5, 3, 0xffff00ff);
@@ -193,7 +208,6 @@ void Raycast_World::draw_sector(Sector& sector, Render_Sector_Info info)
 
 	for (u32 w = 0; w < sector.wall_count; w++)
 	{
-
 		Wall_Info wi = sector_walls[w];
 		if (wi.wall == info.ignore_target)
 			continue;
@@ -243,8 +257,8 @@ void Raycast_World::draw_sector(Sector& sector, Render_Sector_Info info)
 		r2 = atanf(p2.x / p2.y);
 
 		//Calculate the start and end x values relative to screen size.
-		i32 x1 = (i32)((0.5f + r1 / m_view.fov) * m_canvas.width());
-		i32 x2 = (i32)((0.5f + r2 / m_view.fov) * m_canvas.width());
+		i32 x1 = (i32)((0.5f + r1 / m_view.fov) * (m_canvas.width() - 1));
+		i32 x2 = (i32)((0.5f + r2 / m_view.fov) * (m_canvas.width() - 1));
 
 		if (x1 == x2)
 			continue;
@@ -254,8 +268,8 @@ void Raycast_World::draw_sector(Sector& sector, Render_Sector_Info info)
 
 		const f32 eye_to_sector_ratio = (f32)m_view.look_height / sector.height();
 
-		v2i bot1{ x1, (i32)(half_screen_height + h1 * eye_to_sector_ratio+ info.height_offset) };
-		v2i bot2{ x2, (i32)(half_screen_height + h2 * eye_to_sector_ratio+ info.height_offset) };
+		v2i bot1{ x1, (i32)(half_screen_height + h1 * eye_to_sector_ratio + info.height_offset) };
+		v2i bot2{ x2, (i32)(half_screen_height + h2 * eye_to_sector_ratio + info.height_offset) };
 		v2i top1{ x1, bot1.y - h1 };
 		v2i top2{ x2, bot2.y - h2 };
 
@@ -272,21 +286,76 @@ void Raycast_World::draw_sector(Sector& sector, Render_Sector_Info info)
 		const f32 m_bot = slope(bot1, bot2);
 
 		const f32 shading_factor = 1.f - std::min(0.2f, std::abs(m_top));
+		
+		u32 wall_color = multiply_accross_color_channels(wi.wall->color, shading_factor);
 
-		for (i32 x = std::max(x1, info.x_min); x < std::min(x2, info.x_max); x++)
+		u32 ceiling_color = put_color(0, 0, 178);
+		u32 floor_color = put_color(0, 178, 0);
+
+		i32 x_start = std::max(x1, std::max(info.x_min, 0));
+		i32 x_end	= std::min(x2, std::min(info.x_max, (i32)m_canvas.width() - 1));
+
+		if (wi.wall->portal)
 		{
-			i32 y1 = (i32)(top1.y + m_top * (x - top1.x));
-			i32 lit = linear_interpolation({ info.x_min, info.left_y_top }, { info.x_max, info.right_y_top }, x);
-	
-			
-			i32 y2 = (i32)(bot1.y + m_bot * (x - bot1.x));
-			i32 lib = linear_interpolation({ info.x_min, info.left_y_bot }, { info.x_max, info.right_y_bot }, x);
-	
-			u32 wall_color = multiply_accross_color_channels(wi.wall->color, shading_factor);
-			u32 ceiling_color = put_color(0, 0, 255);
-			u32 floor_color = put_color(0, 255, 0);
-			
-			m_canvas.draw_vertical_column(x, lit, lib, y1, y2, ceiling_color, wall_color, floor_color);
+			for (i32 x = x_start; x <= x_end; x++)
+			{
+				i32 y1 = (i32)(top1.y + m_top * (x - top1.x));
+				i32 top_limit = linear_interpolation({ info.x_min, info.left_y_top }, { info.x_max, info.right_y_top }, x);
+				if (top_limit < 0)
+					top_limit = 0;
+
+				if (y1 < top_limit)
+					y1 = top_limit;
+
+				i32 y2 = (i32)(bot1.y + m_bot * (x - bot1.x));
+				i32 bot_limit = linear_interpolation({ info.x_min, info.left_y_bot }, { info.x_max, info.right_y_bot }, x);
+				if (bot_limit > (i32)m_canvas.height() - 1)
+					bot_limit = (i32)m_canvas.height() - 1;
+
+				if (y2 > bot_limit)
+					y2 = bot_limit;
+
+				//draw ceiling
+				if (y1 > top_limit)
+					m_canvas.draw_vertical_column(x, top_limit, y1 - 1, ceiling_color);
+
+				//draw floor
+				if (y2 < bot_limit)
+					m_canvas.draw_vertical_column(x, y2 + 1, bot_limit, floor_color);
+			}
+		}
+		else
+		{
+			for (i32 x = x_start; x <= x_end; x++)
+			{
+				i32 y1 = (i32)(top1.y + m_top * (x - top1.x));
+				i32 top_limit = linear_interpolation({ info.x_min, info.left_y_top }, { info.x_max, info.right_y_top }, x);
+				if (top_limit < 0)
+					top_limit = 0;
+
+				if (y1 < top_limit)
+					y1 = top_limit;
+
+				i32 y2 = (i32)(bot1.y + m_bot * (x - bot1.x));
+				i32 bot_limit = linear_interpolation({ info.x_min, info.left_y_bot }, { info.x_max, info.right_y_bot }, x);
+				if (bot_limit > (i32)m_canvas.height() - 1)
+					bot_limit = (i32)m_canvas.height() - 1;
+
+				if (y2 > bot_limit)
+					y2 = bot_limit;
+
+				//draw ceiling
+				if (y1 > top_limit)
+					m_canvas.draw_vertical_column(x, top_limit, y1 - 1, ceiling_color);
+
+				//draw wall
+				if (y1 < y2)
+					m_canvas.draw_vertical_column(x, y1, y2, wall_color);
+
+				//draw floor
+				if (y2 < bot_limit)
+					m_canvas.draw_vertical_column(x, y2 + 1, bot_limit, floor_color);
+			}
 		}
 
 		if (wi.wall->portal)
@@ -294,15 +363,36 @@ void Raycast_World::draw_sector(Sector& sector, Render_Sector_Info info)
 			Render_Sector_Info rsi;
 			rsi.x_min = x1;
 			rsi.x_max = x2;
-			rsi.left_y_bot = bot1.y;
-			rsi.left_y_top = top1.y;
-			rsi.right_y_bot = bot2.y;
-			rsi.right_y_top = top2.y;
+			rsi.left_y_bot = bot1.y + 1;  //funky hack... 
+			rsi.left_y_top = top1.y - 1;  //funky hack... 
+			rsi.right_y_bot = bot2.y + 1; //funky hack... 
+			rsi.right_y_top = top2.y - 1; //funky hack... 
 			rsi.height_offset = 0;
 			rsi.ignore_target = wi.wall->portal_wall;
 
 			draw_sector(*wi.wall->portal, rsi);
+			//m_canvas.draw_line(top1, top2, RED);
+
 		}
+
+		//for (i32 x = std::max(x1, info.x_min); x <= std::min(x2, info.x_max); x++)
+		//{
+		//	i32 y1 = (i32)(top1.y + m_top * (x - top1.x));
+		//	i32 top_limit = linear_interpolation({ info.x_min, info.left_y_top }, { info.x_max, info.right_y_top }, x);
+		//
+		//	
+		//	i32 y2 = (i32)(bot1.y + m_bot * (x - bot1.x));
+		//	i32 bot_limit = linear_interpolation({ info.x_min, info.left_y_bot }, { info.x_max, info.right_y_bot }, x);
+		//
+		//	u32 wall_color = multiply_accross_color_channels(wi.wall->color, shading_factor);
+		//	
+		//	
+		//	u32 ceiling_color = put_color(0, 0, 255);
+		//	u32 floor_color = put_color(0, 255, 0);
+		//	
+		//	m_canvas.draw_vertical_column(x, top_limit, bot_limit, y1, y2, ceiling_color, wall_color, floor_color);
+		//}
+		//
 	}
 }
 
@@ -328,7 +418,7 @@ void Raycast_World::sort_sector_walls(std::array<Wall_Info, Level::s_sector_wall
 				insert_at = i;
 
 				//Shift down all the elements with smaller depth value.
-				for (u32 shift_idx = idx; shift_idx > i; shift_idx--)
+				for (i32 shift_idx = idx; shift_idx > i; shift_idx--)
 					output[shift_idx] = output[shift_idx - 1];
 
 				break;

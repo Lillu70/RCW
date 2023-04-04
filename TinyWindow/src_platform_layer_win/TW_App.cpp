@@ -282,6 +282,36 @@ i64 TW_App::get_cpu_time_stamp()
 	return __rdtsc();
 }
 
+void TW_App::set_fullscreen(bool enalbed)
+{
+	if (m_is_fullscreen == enalbed) return;
+	
+	DWORD dwStyle = GetWindowLongA(m_window, GWL_STYLE);
+	
+	if (enalbed)
+	{
+		//TODO: Log errors.
+
+		if (!GetWindowPlacement(m_window, &m_window_placement))
+			return; 
+
+		MONITORINFO mi = { sizeof(mi) };
+		
+		if(!GetMonitorInfoA(MonitorFromWindow(m_window, MONITOR_DEFAULTTOPRIMARY), &mi))
+			return;
+		
+		SetWindowLongA(m_window, GWL_STYLE, dwStyle & ~WS_OVERLAPPEDWINDOW);
+		SetWindowPos(m_window, HWND_TOP, mi.rcMonitor.left, mi.rcMonitor.top, mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top, SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+	}
+	else
+	{
+		SetWindowLongA(m_window, GWL_STYLE, dwStyle | WS_OVERLAPPEDWINDOW);
+		SetWindowPlacement(m_window, &m_window_placement);
+		SetWindowPos(m_window, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+	}
+
+	m_is_fullscreen = enalbed;
+}
 
 Controller_State TW_App::get_controller_state(i32 idx)
 {

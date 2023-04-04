@@ -37,19 +37,23 @@ public: //virtual interface to be passed into a client layer.
 
 	i64 get_cpu_time_stamp() override;
 
-	void do_close()					override	{ m_app_running = false;		}
-	bool get_is_running()			override	{ return m_app_running;			}
-	bool get_is_focused()			override	{ return m_is_focused;			}
-	u32* get_pixel_buffer()			override	{ return m_bitmap_mem;			}
-	i32 get_pixel_buffer_width() 	override	{ return m_bitmap_width;		}
-	i32 get_pixel_buffer_height() 	override	{ return m_bitmap_height;		}
-	f32 get_frame_time()			override	{ return m_frame_time;			}
-	i32 get_frames_per_second()		override	{ return m_frames_per_second;	}
-	u64 get_cycles_per_second()		override	{ return m_cycles_per_second;	}
-	
 	Controller_State get_controller_state(i32 idx) override;
 	Button_State get_keyboard_state(Key_Code key_code) override;
 	bool get_keyboard_button_down(Key_Code key_code) override;
+	
+	void set_fullscreen(bool enalbed) override;
+
+
+	void do_close()					override { m_app_running = false;		}
+	bool get_is_running()			override { return m_app_running;		}
+	bool get_is_focused()			override { return m_is_focused;			}
+	u32* get_pixel_buffer()			override { return m_bitmap_mem;			}
+	i32 get_pixel_buffer_width() 	override { return m_bitmap_width;		}
+	i32 get_pixel_buffer_height() 	override { return m_bitmap_height;		}
+	f32 get_frame_time()			override { return m_frame_time;			}
+	i32 get_frames_per_second()		override { return m_frames_per_second;	}
+	u64 get_cycles_per_second()		override { return m_cycles_per_second;	}
+	bool get_is_fullscreen()		override { return m_is_fullscreen;		}	
 
 public:
 	bool m_include_perf_metrics_in_title = true;
@@ -83,8 +87,9 @@ private:
 
 	bool m_app_running = true;
 	bool m_is_focused = false;
-	
-	
+	bool m_is_fullscreen = false;
+	WINDOWPLACEMENT m_window_placement = { sizeof(m_window_placement) };
+
 	Controller_State m_controller_state[s_max_controllers];
 	bool m_keyboard_state_a[(u64)Key_Code::KEY_CODE_COUNT]{};
 	bool m_keyboard_state_b[(u64)Key_Code::KEY_CODE_COUNT]{};

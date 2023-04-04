@@ -12,6 +12,7 @@ public:
 	Raycast_World(TW_Platform_Interface* platform);
 
 	void update();
+	void process_input();
 	void draw_top_down();
 	void draw_first_person();
 	
@@ -26,7 +27,7 @@ private:
 	View m_view;
 	Level m_level;
 	Pixel_Canvas m_canvas;
-	static constexpr f32 MAX_DRAW_DISTANCE = 64;
+	static constexpr f32 MAX_DRAW_DISTANCE = 640; //TODO(AZENOR): Remove this shit.
 
 	TW_Platform_Interface* m_platform = nullptr;
 };

@@ -124,13 +124,8 @@ void Pixel_Canvas::draw_vertical_column(i32 x, i32 region_top, i32 region_bot, i
 	if (x < 0 || x >= (i32)m_dimensions.x) return;
 	
 	//Bigger of; SCREEN_HEIHT, collumn_bot!
-
-	i32 og_y1 = column_top;
-	i32 og_y2 = column_bot;
-
 	region_top = std::max(0, region_top);
 	region_bot = std::min((i32)m_dimensions.y -1, region_bot);
-	
 
 	column_bot = std::min(region_bot, column_bot);
 	column_top = std::max(region_top, column_top);
@@ -141,11 +136,22 @@ void Pixel_Canvas::draw_vertical_column(i32 x, i32 region_top, i32 region_bot, i
 	for (i32 y = column_top; y <= column_bot; ++y)
 		m_pixels[coord_to_idx({ (u32)x, (u32)y })] = column_color;
 	
-	for (i32 y = column_bot; y < region_bot; ++y)
+	for (i32 y = column_bot + 1; y <= region_bot; ++y)
 		m_pixels[coord_to_idx({ (u32)x, (u32)y })] = bot_color;
 
 	//for (i32 y = std::max(y_top, 0); y < std::min(y_bot, (i32)(m_dimensions.y - 1)); y++)
 	//	m_pixels[coord_to_idx({ (u32)x, (u32)y })] = color;
+}
+
+void Pixel_Canvas::draw_vertical_column(i32 x, i32 y_top, i32 y_bot, u32 color)
+{
+	//if (x < 0 || x >= (i32)m_dimensions.x) return;
+	//
+	//y_top = std::max(0, y_top);
+	//y_bot = std::min((i32)m_dimensions.y - 1, y_bot);
+
+	for (i32 y = y_top; y <= y_bot; ++y)
+		m_pixels[coord_to_idx({ (u32)x, (u32)y })] = color;
 }
 
 bool Pixel_Canvas::is_on_canvas(v2i coord)

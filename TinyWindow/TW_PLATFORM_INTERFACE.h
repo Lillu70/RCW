@@ -5,7 +5,7 @@
 class TW_Platform_Interface
 {
 public:
-	virtual u32* do_resize_pixel_buffer(i32 new_width, i32 new_height)		= 0;
+	virtual u32* do_resize_pixel_buffer(i32 new_width, i32 new_height)	= 0;
 	virtual i64 get_cpu_time_stamp()									= 0;
 	virtual bool get_is_running()										= 0;
 	virtual bool get_is_focused()										= 0;
@@ -19,4 +19,6 @@ public:
 	virtual Button_State get_keyboard_state(Key_Code key_code)			= 0;
 	virtual bool get_keyboard_button_down(Key_Code key_code)			= 0;
 	virtual Controller_State get_controller_state(i32 idx = 0)			= 0;
+	virtual void set_fullscreen(bool enabled)							= 0;
+	virtual bool get_is_fullscreen()									= 0;
 };
