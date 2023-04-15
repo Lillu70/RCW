@@ -1,24 +1,26 @@
 
 #include "../scr_user/Raycast_World.h"
 
-#include "TW_App.h"
+#include "TW_App.cpp"
+
 
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	TW_App_Config config;
 	config.title = "Back To The Past";
-	TW_App app(instance, config);
 
-	Raycast_World game(&app);
-
-	while (app.get_is_running())
+	win32_init(instance, config);
+	
+	Raycast_World game(win32_get_call_table(), s_core.game_state_memory, GAME_STATE_MEMORY_SIZE);
+	
+	
+	while (win32_get_is_running())
 	{
-		app.flush_events();
+		win32_flush_events();
 
 		game.update();
-		
-		app.update_surface();
-	}
 
-	return EXIT_SUCCESS;
+
+		win32_update_surface();
+	}
 }

@@ -2,7 +2,6 @@
 #include <dsound.h>
 #include <utility>
 
-
 typedef HRESULT WINAPI d_sound_create(LPCGUID pcGuidDevice, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter);
 typedef HRESULT WINAPI d_sound_create_buffer(LPCDSBUFFERDESC pcDSBufferDesc, _Outptr_ LPDIRECTSOUNDBUFFER* ppDSBuffer, _Pre_null_ LPUNKNOWN pUnkOuter);
 

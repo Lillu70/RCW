@@ -2,11 +2,12 @@
 
 #include "../Primitives.h"
 
-#define WHITE 0xffffffff
-#define BLACK 0xff000000
-#define RED   0xffff0000
-#define GREEN 0xff00ff00
-#define BLUE  0xff0000ff
+#define WHITE	0xffffffff
+#define BLACK	0xff000000
+#define RED		0xffff0000
+#define GREEN	0xff00ff00
+#define BLUE	0xff0000ff
+#define MAGENTA 0xffff00ff
 
 template<typename T>
 struct v2

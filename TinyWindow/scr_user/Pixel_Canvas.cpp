@@ -1,5 +1,5 @@
 #include "Pixel_Canvas.h"
-
+#include "RCW_ASSERT.h"
 
 
 Pixel_Canvas::Pixel_Canvas(u32* pixels, v2u dimensions) : m_pixels(pixels), m_dimensions(dimensions)
@@ -145,10 +145,8 @@ void Pixel_Canvas::draw_vertical_column(i32 x, i32 region_top, i32 region_bot, i
 
 void Pixel_Canvas::draw_vertical_column(i32 x, i32 y_top, i32 y_bot, u32 color)
 {
-	//if (x < 0 || x >= (i32)m_dimensions.x) return;
-	//
-	//y_top = std::max(0, y_top);
-	//y_bot = std::min((i32)m_dimensions.y - 1, y_bot);
+	ASSERT(y_top >= 0);
+	ASSERT(y_bot < height())
 
 	for (i32 y = y_top; y <= y_bot; ++y)
 		m_pixels[coord_to_idx({ (u32)x, (u32)y })] = color;

@@ -26,6 +26,7 @@
     <ClInclude Include="scr_user\Maths.h" />
     <ClInclude Include="scr_user\Pixel_Canvas.h" />
     <ClInclude Include="scr_user\Raycast_World.h" />
+    <ClInclude Include="scr_user\RCW_ASSERT.h" />
     <ClInclude Include="scr_user\Types.h" />
     <ClInclude Include="scr_user\Utility.h" />
     <ClInclude Include="TW_PLATFORM_INTERFACE.h" />
@@ -104,6 +105,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <UndefinePreprocessorDefinitions>%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

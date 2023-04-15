@@ -99,3 +99,8 @@ inline u32 multiply_accross_color_channels(u32 color, f32 mult)
 
 	return color;
 }
+
+inline static i32 round_to_int(f32 real)
+{
+	return (i32)(real + 0.5f);
+}

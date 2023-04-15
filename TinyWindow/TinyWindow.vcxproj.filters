@@ -71,6 +71,9 @@
     <ClInclude Include="Input.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="scr_user\RCW_ASSERT.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
