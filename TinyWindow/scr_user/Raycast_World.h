@@ -16,20 +16,19 @@ public:
 	void process_input();
 	void draw_top_down();
 	void draw_first_person();
-	
-	void draw_sector(Sector* sector, Render_Sector_Info info);
-	void sort_sector_walls(Wall_Info* output_buffer, Sector* sector);
+	void draw_debug_info();
 
-	void reset_is_drawn_flags();
+	void draw_sector(Sector* sector, Render_Sector_Info info, Memory_Arena* mem_arena);
+	void sort_sector_walls(Wall_Info* output_buffer, Sector* sector);
 	
 	//Takes in camera space coordinates, and returns true if the point lies inside the fov cone.
 	static bool is_segment_on_screen(const v2f sp_p1, const v2f sp_p2, const f32 max_distance, const View& view);
 
 private:
 	Pixel_Canvas m_canvas;
-	Game_State* game_state = nullptr;
-	Level& level = game_state->level;
-	u32 m_game_state_memory_size = 0;
+	Memory_Arena m_game_memory;
+	Player* m_player;
+	Sector* m_first_sector;
 
 	TW_Platform_Call_Table m_platform;
 };

@@ -146,7 +146,7 @@ struct Controller_State
 	Controller_State::Data m_curr;
 	Controller_State::Data m_prev;
 
-	Button_State get(Button button)
+	Button_State get_button_state(Button button)
 	{
 		i16 b = (i16)button;
 		return Button_State((m_curr.button_states & (1 << (int)b)) > 0, (m_prev.button_states & (1 << (int)b)) > 0);

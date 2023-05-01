@@ -1,6 +1,7 @@
 #pragma once
 #include "Maths.h"
 #include "Level.h"
+#include "Memory_Arena.h"
 
 struct View
 {
@@ -25,14 +26,14 @@ struct View
 	{
 		fov = new_fov;
 		hfov = fov / 2;
+		calculate_view_segments();
 	}
 
 	void set_look_direction(f32 d)
 	{
-		while (d < 0) d += (f32)TAU;
-		while (d > TAU) d -= (f32)TAU;
+		//while (d < 0) d += TAU32;
+		//while (d > TAU) d -= TAU32;
 		
-
 		look_direction = d;
 		look_cos = cosf( d );
 		look_sin = sinf( d );
@@ -56,12 +57,7 @@ struct Player
 	Sector* sector;
 	View view;
 
-	f32 movement_speed = 5.f;
+	f32 movement_speed = 10.f;
 	f32 turning_speed = 3.f;
 };
 
-struct Game_State
-{
-	Player player;
-	Level level;
-};

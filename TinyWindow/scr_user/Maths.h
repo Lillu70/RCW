@@ -5,6 +5,7 @@
 #include <cmath>
 #include <limits>
 
+
 inline bool line_intersection(v2f l0p0, v2f l0p1, v2f l1p0, v2f l1p1, v2f& hit_location)
 {
 	v2f s1;
@@ -104,3 +105,35 @@ inline static i32 round_to_int(f32 real)
 {
 	return (i32)(real + 0.5f);
 }
+
+inline static f32 rad_to_deg(f32 radian_value)
+{
+	return radian_value * DEG_HALF_CIRCLE / PI32;
+}
+
+inline static f32 deg_to_rad(f32 degree_value)
+{
+	return degree_value * PI32 / DEG_HALF_CIRCLE;
+}
+
+inline static f64 min(f64 a, f64 b) { return a < b ? a : b; }
+inline static f32 min(f32 a, f32 b) { return a < b ? a : b; }
+inline static i64 min(i64 a, i64 b) { return a < b ? a : b; }
+inline static u64 min(u64 a, u64 b) { return a < b ? a : b; }
+inline static i32 min(i32 a, i32 b) { return a < b ? a : b; }
+inline static u32 min(u32 a, u32 b) { return a < b ? a : b; }
+inline static i16 min(i16 a, i16 b) { return a < b ? a : b; }
+inline static u16 min(u16 a, u16 b) { return a < b ? a : b; }
+inline static i8  min(i8 a, i8 b)	{ return a < b ? a : b; }
+inline static u8  min(u8 a, u8 b)	{ return a < b ? a : b; }
+
+inline static f64 max(f64 a, f64 b) { return a > b ? a : b; }
+inline static f32 max(f32 a, f32 b) { return a > b ? a : b; }
+inline static i64 max(i64 a, i64 b) { return a > b ? a : b; }
+inline static u64 max(u64 a, u64 b) { return a > b ? a : b; }
+inline static i32 max(i32 a, i32 b) { return a > b ? a : b; }
+inline static u32 max(u32 a, u32 b) { return a > b ? a : b; }
+inline static i16 max(i16 a, i16 b) { return a > b ? a : b; }
+inline static u16 max(u16 a, u16 b) { return a > b ? a : b; }
+inline static i8  max(i8 a, i8 b)   { return a > b ? a : b; }
+inline static u8  max(u8 a, u8 b)   { return a > b ? a : b; }

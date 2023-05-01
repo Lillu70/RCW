@@ -146,7 +146,7 @@ void Pixel_Canvas::draw_vertical_column(i32 x, i32 region_top, i32 region_bot, i
 void Pixel_Canvas::draw_vertical_column(i32 x, i32 y_top, i32 y_bot, u32 color)
 {
 	ASSERT(y_top >= 0);
-	ASSERT(y_bot < height())
+	ASSERT(y_bot < (i32)height())
 
 	for (i32 y = y_top; y <= y_bot; ++y)
 		m_pixels[coord_to_idx({ (u32)x, (u32)y })] = color;

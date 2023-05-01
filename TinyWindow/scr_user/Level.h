@@ -1,8 +1,35 @@
 #pragma once
 #include "Types.h"
+#include "RCW_ASSERT.h"
+#include "Memory_Arena.h"
 
-struct Sector;
-struct Wall_End;
+
+struct Sector
+{
+	Sector* next_sector = nullptr;
+	i32 floor = 0;
+	i32 ceiling = 480;
+	u32 wall_count = 0;
+
+	inline i32 height()
+	{
+		return ceiling - floor;
+	}
+};
+
+struct Wall
+{
+	Wall() = default;
+	Wall(v2f world_pos) : world_pos(world_pos) {}
+
+	Sector* sector = nullptr;
+	Wall* portal = nullptr;
+
+	v2f world_pos;
+	u32 color = WHITE;
+
+	bool is_drawn = false;
+};
 
 struct Render_Sector_Info
 {
@@ -15,22 +42,7 @@ struct Render_Sector_Info
 	i32 height_offset;
 	i32 source_floor;
 	i32 source_ceiling;
-	Wall_End* ignore_target;
-};
-
-
-struct Wall_End
-{
-	Wall_End() = default;
-
-	Wall_End(v2f p) : world_pos(p) {}
-	Wall_End(v2f p, u32 c) : world_pos(p), color(c) {}
-
-	v2f world_pos;
-	u32 color = WHITE;
-	Sector* portal = nullptr;
-	Wall_End* portal_wall = nullptr;
-	bool is_drawn = false;
+	Wall* ignore_target;
 };
 
 struct Wall_Info
@@ -38,53 +50,76 @@ struct Wall_Info
 	f32 depth;
 	v2f view_space_p1;
 	v2f view_space_p2;
-	Wall_End* wall;
+	Wall* wall;
 };
 
-struct Sector
+struct Sector_Builder
 {
-	Wall_End* first_wall;
-	u32 wall_count;
+	Sector_Builder(Memory_Arena* memory_arena) : mem_arena(memory_arena) {}
 
-	i32 floor	= 0;
-	i32 ceiling = 480;
-
-	inline i32 height()
+	inline Sector* add_sector()
 	{
-		return ceiling - floor;
-	}
-
-	//https://www.codeproject.com/Tips/84226/Is-a-Point-inside-a-Polygon
-	inline bool point_inside_sector(v2f point)
-	{
-		Wall_End*& walls = first_wall;
-
-		i32 i, j;
-		bool c = false;
-		for (i = 0, j = (i32)wall_count - 1; i < (i32)wall_count; j = i++)
+		if (last_sector)
 		{
-			if (((walls[i].world_pos.y > point.y) != (walls[j].world_pos.y > point.y)) &&
-				(point.x < (walls[j].world_pos.x - walls[i].world_pos.x) * (point.y - walls[i].world_pos.y) / (walls[j].world_pos.y - walls[i].world_pos.y) + walls[i].world_pos.x))
-				c = !c;
+			ASSERT(last_sector->wall_count >= 3);
+			
+			last_sector->next_sector = push_struct_into_mem_arena(mem_arena, Sector);
+			last_sector = last_sector->next_sector;
 		}
-		return c;
+		else
+			last_sector = push_struct_into_mem_arena(mem_arena, Sector);
+		
+		next_address = mem_arena->next_free;
+		
+		return last_sector;
+	};
+
+	inline Wall* add_wall(Wall wall)
+	{
+		ASSERT(last_sector);
+		ASSERT(next_address == mem_arena->next_free);
+
+		++last_sector->wall_count;
+		Wall* ptr = push_struct_into_mem_arena_with_placement(mem_arena, Wall, wall);
+		ptr->sector = last_sector;
+		next_address = mem_arena->next_free;
+
+		return ptr;
 	}
+
+private:
+	Memory_Arena* mem_arena = nullptr;
+	Sector* last_sector = nullptr;
+	void* next_address = nullptr;
 };
 
-struct Level
+static inline void make_wall_portal(Wall* source, Wall* target, bool make_bothways = false)
 {
-	static constexpr u32 s_wall_max = 64;
-	static constexpr u32 s_sector_wall_max = 16;
-	static constexpr u32 s_sector_max = 32;
-	
-	u32 m_sector_count = 0;
-	u32 m_wall_count = 0;
+	source->portal = target;
+	if (make_bothways)
+		make_wall_portal(target, source);
+}
 
-	Wall_End m_walls[s_wall_max];
-	Sector m_sectors[s_sector_max];
+static inline Wall* get_sector_first_wall(Sector* sector)
+{
+	return (Wall*)(++sector);
+}
 
-	Sector* get_wall_sector(Wall_End* wall);
-	Wall_End* add_wall(Wall_End wall);
-	Wall_End* add_sector(Wall_End first_wall);
-	void make_wall_portal(Wall_End* source, Wall_End* target, bool make_bothways); 
-};
+static inline bool point_inside_sector(v2f point, Sector* sector)
+{
+	ASSERT(sector);
+
+	Wall* walls = get_sector_first_wall(sector);
+	u32 wall_count = sector->wall_count;
+
+	i32 i, j;
+	bool c = false;
+	for (i = 0, j = (i32)wall_count - 1; i < (i32)wall_count; j = i++)
+	{
+		if (((walls[i].world_pos.y > point.y) != (walls[j].world_pos.y > point.y)) &&
+			(point.x < (walls[j].world_pos.x - walls[i].world_pos.x) * (point.y - walls[i].world_pos.y) / (walls[j].world_pos.y - walls[i].world_pos.y) + walls[i].world_pos.x))
+			c = !c;
+	}
+	return c;
+}
+

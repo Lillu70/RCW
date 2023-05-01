@@ -47,6 +47,8 @@ static bool win32_get_is_fullscreen();
 static bool win32_get_keyboard_button_down(Key_Code key_code);
 static Button_State win32_get_keyboard_state(Key_Code key_code);
 static Controller_State win32_get_controller_state(i32 idx);
+static u32 win32_get_window_width();
+static u32 wind32_get_window_height();
 
 static void win32_output_debug_string(const char* str);
 

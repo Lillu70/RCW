@@ -4,70 +4,95 @@
 static constexpr i32 s_default_pixel_buffer_width	= 620;
 static constexpr i32 s_default_pixel_buffer_height	= 480;
 
+static constexpr i32 s_screen_ref_width = s_default_pixel_buffer_width;
+static constexpr i32 s_screen_ref_height = s_default_pixel_buffer_height;
 
-Raycast_World::Raycast_World(TW_Platform_Call_Table platform, void* game_state_memory, u32 game_state_memory_size) : 
-	m_platform(platform), game_state((Game_State*)game_state_memory), m_game_state_memory_size(game_state_memory_size),
+Raycast_World::Raycast_World(TW_Platform_Call_Table platform, void* game_state_memory, u32 game_state_memory_size) : m_platform(platform),
 	m_canvas(platform.do_resize_pixel_buffer(s_default_pixel_buffer_width, s_default_pixel_buffer_height), { s_default_pixel_buffer_width, s_default_pixel_buffer_height })
 {
-	*game_state = Game_State();
-
-	Wall_End* portal_4 = level.add_sector(v2f(10,10));
-	level.add_wall(v2f(15, 10));
-	Wall_End* portal_0 = level.add_wall(v2f(20, 10));
-	level.add_wall(v2f(30, 10));
-	level.add_wall(v2f(35, 30));
-	level.add_wall(v2f(19, 20));
+	init_memory_arena(&m_game_memory, game_state_memory, game_state_memory_size);
 	
-	Wall_End* portal_5 = level.add_sector(v2f(19, 20));
-	level.add_wall(v2f(16, 30));
-	level.add_wall(v2f(10, 10));
+	m_player = push_struct_into_mem_arena(&m_game_memory, Player);
 
-	level.add_sector(v2f(15, 10));
-	Wall_End* portal_1 = level.add_wall(v2f(20, 10));
-	Wall_End* portal_2 =level.add_wall(v2f(20, 0));
-	level.add_wall(v2f(15, 0));
+#if 0
+	u32 window_width = m_platform.get_window_width();
+	u32 window_height = m_platform.get_window_height();
 
-	level.add_sector(v2f(20, 10));
-	Wall_End* portal_3 = level.add_wall(v2f(20, 0));
-	level.add_wall(v2f(25, 5));
+	m_platform.output_debug_string(("window width: " + std::to_string(window_width) + "\n").c_str());
+	m_platform.output_debug_string(("window height: " + std::to_string(window_height) + "\n").c_str());
 
-	level.make_wall_portal(portal_0, portal_1, true);
-	level.make_wall_portal(portal_2, portal_3, true);
-	level.make_wall_portal(portal_4, portal_5, true);
+	m_canvas = Pixel_Canvas(m_platform.do_resize_pixel_buffer(window_width, window_height), {window_width, window_height});
+#endif
 
-	level.m_sectors[2].floor = -100;
-	level.m_sectors[2].ceiling = 700;
-	level.m_sectors[3].floor = 100;
-	level.m_sectors[3].ceiling = 300;
 
-	game_state->player.sector = &level.m_sectors[0];
-	View& player_view = game_state->player.view;
-	player_view.position = { 24.34f, 21.65f };
-	player_view.set_look_direction(1.95f);
-	player_view.scale = 0.5;
-	player_view.calculate_view_segments();
+	Sector_Builder builder(&m_game_memory);
+	m_first_sector = builder.add_sector();
+
+#if 1
+	Wall* portal_0 = builder.add_wall(v2f{ 10, 10 });
+	builder.add_wall(v2f{ 15, 10 });
+	Wall* portal_1 = builder.add_wall(v2f{ 20, 10 });
+	builder.add_wall(v2f{ 30, 10 });
+	builder.add_wall(v2f{ 35, 30 });
+	builder.add_wall(v2f{ 19, 20 });
+	
+	builder.add_sector();
+	Wall* portal_2 = builder.add_wall(v2f{ 19, 20 });
+	builder.add_wall(v2f{ 16, 30 });
+	builder.add_wall(v2f{ 10, 10 });
+	
+	{
+		Sector* sector = builder.add_sector();
+		sector->floor = -100;
+		sector->ceiling = 700;
+	}
+	builder.add_wall(v2f{ 15, 10 });
+	Wall* portal_3 = builder.add_wall(v2f{ 20, 10 });
+	Wall* portal_4 = builder.add_wall(v2f{ 20, 0 });
+	builder.add_wall(v2f{ 15, 0 });
+	
+	{
+		Sector* sector = builder.add_sector();
+		sector->floor = 100;
+		sector->ceiling = 300;
+	}
+	builder.add_wall(v2f{ 20, 10 });
+	Wall* portal_5 = builder.add_wall(v2f{ 20, 0 });
+	builder.add_wall(v2f{ 25, 5 });
+
+	make_wall_portal(portal_0, portal_2, true);
+	make_wall_portal(portal_1, portal_3, true);
+	make_wall_portal(portal_4, portal_5, true);
+
+#else
+	builder.add_wall(v2f{ 10, 10 });
+	builder.add_wall(v2f{ 30, 10 });
+#endif
+
+	m_player->sector = m_first_sector;
+	{
+		View& player_view = m_player->view;
+		player_view.position = { 15, 15 };
+		player_view.set_look_direction(deg_to_rad(0));
+		player_view.scale = 0.5;
+		player_view.set_fov(PI32 / 3);
+		player_view.calculate_view_segments();
+	}
 }
 
 void Raycast_World::update()
 {
 	if (!m_platform.get_is_focused()) return;
 	
-	reset_is_drawn_flags();
-
 	process_input();
 
-	m_canvas.clear(put_color(0,0,0));
+	m_canvas.clear(MAGENTA);
 	
 	draw_first_person();
 
 	draw_top_down();
-	
 
-	m_canvas.draw_text("PLAYER: x: " + std::to_string(game_state->player.view.position.x) + " y: " + std::to_string(game_state->player.view.position.y), { 10,10 }, MAGENTA);
-	m_canvas.draw_text("PLAYER: a: " + std::to_string(game_state->player.view.look_direction), { 10, 10 + m_canvas.s_build_in_font_char_height * 1 }, MAGENTA);
-	
-	m_canvas.draw_text("SECTOR: " + std::to_string((u64)(game_state->player.sector)), { 10, 10 + m_canvas.s_build_in_font_char_height * 2 }, MAGENTA);
-	
+	draw_debug_info();
 }
 
 void Raycast_World::process_input()
@@ -81,9 +106,9 @@ void Raycast_World::process_input()
 	if (m_platform.get_keyboard_state(Key_Code::ESC).is_released())
 		m_platform.do_close();
 
-	View& player_view = game_state->player.view;
+	View& player_view = m_player->view;
 	v2f player_pos = player_view.position;
-	f32 turn_speed = game_state->player.turning_speed;
+	f32 turn_speed = m_player->turning_speed;
 
 	f32 r_stick;
 	if (controller.get_right_stick_x(r_stick))
@@ -99,7 +124,7 @@ void Raycast_World::process_input()
 			player_view.set_look_direction(player_view.look_direction -= delta_time * turn_speed);
 	}
 
-	f32 movement_speed = game_state->player.movement_speed;
+	f32 movement_speed = m_player->movement_speed;
 
 	f32 stick_val_x = 0; f32 stick_val_y = 0;
 	bool stick_b_x = controller.get_left_stick_x(stick_val_x);
@@ -155,48 +180,53 @@ void Raycast_World::process_input()
 		}
 	}
 
-	if (player_pos != player_view.position && !game_state->player.sector->point_inside_sector(player_view.position))
+	if (player_pos != player_view.position && !point_inside_sector(player_view.position, m_player->sector))
 	{
 		bool sector_found = false;
-
-		for(u32 i = 0; i < level.m_sector_count; i++)
-			if (level.m_sectors[i].point_inside_sector(player_view.position))
+		Sector* sector = m_first_sector;
+		while (sector)
+		{
+			if (point_inside_sector(player_view.position, sector))
 			{
-				game_state->player.sector = &level.m_sectors[i];
 				sector_found = true;
+				m_player->sector = sector;
 				break;
 			}
 
+			sector = sector->next_sector;
+		}
+
+#if 1
+
 		if (!sector_found)
 			player_view.position = player_pos;
+#endif
 	}
 
-	/*
-	Level& level = game_state->level;
+	if (controller.get_button_down(Button::L_SHLD) || m_platform.get_keyboard_button_down(Key_Code::F5))
+	{
+		f32 new_fov = player_view.fov - delta_time;
+		new_fov = max(PI32/10, new_fov);
+		player_view.set_fov(new_fov);
+		
+	
+	}
 
-	static f32 fheight = level.m_sectors[1].floor;
-	static f32 cheight = level.m_sectors[1].ceiling;
+	if (controller.get_button_down(Button::R_SHLD) || m_platform.get_keyboard_button_down(Key_Code::F6))
+	{
+		f32 new_fov = player_view.fov + delta_time;
+		new_fov = min(PI32 - PI32 / 10, new_fov);
+		player_view.set_fov(new_fov);
 
-	if (m_platform.get_keyboard_button_down(Key_Code::NUM_1))
-		fheight -= delta_time * 100;
-	if (m_platform.get_keyboard_button_down(Key_Code::NUM_2))
-		fheight += delta_time * 100;
+	}
 
-	if (m_platform.get_keyboard_button_down(Key_Code::NUM_3))
-		cheight -= delta_time * 100;
-	if (m_platform.get_keyboard_button_down(Key_Code::NUM_4))
-		cheight += delta_time * 100;
-
-	level.m_sectors[1].floor = fheight;
-	level.m_sectors[1].ceiling = cheight;
-	*/
 }
 
 void Raycast_World::draw_top_down()
 {
 	v2f half_screen = m_canvas.dimensions().As<f32>() / 2;
 
-	View td_view = game_state->player.view;
+	View td_view = m_player->view;
 	td_view.scale = 10.f;
 	td_view.calculate_view_segments();
 
@@ -211,34 +241,48 @@ void Raycast_World::draw_top_down()
 		half_screen.y + sinf(-(f32)PI / 2 + td_view.hfov) * td_view.max_draw_distance * td_view.scale).As<i32>(), put_color(100, 100, 100));
 	// ---
 
-	for (u32 i = 0; i < level.m_sector_count; i++)
+	Sector* sector = m_first_sector;
+	while (sector)
 	{
-		Sector& sector = level.m_sectors[i];
-		if (sector.wall_count < 2)
-			continue;
-
-		v2f p1_world_pos = td_view.world_to_view((sector.first_wall + (sector.wall_count - 1))->world_pos);
-		for (u32 w = 0; w < sector.wall_count; w++)
+		if (sector->wall_count < 2)
 		{
-			Wall_End& wall = *(sector.first_wall + w);
-			
+			sector = sector->next_sector;
+			continue;
+		}
+
+		v2f p1_world_pos = td_view.world_to_view((get_sector_first_wall(sector) + (sector->wall_count - 1))->world_pos);
+		for (u32 w = 0; w < sector->wall_count; w++)
+		{
+			Wall& wall = *(get_sector_first_wall(sector) + w);
+
 			//Convert wall points to top down view space.
 			v2f p2 = td_view.world_to_view(wall.world_pos);
-			
-			u32 wcolor = put_color(100,100,100);
+
+			u32 wcolor = put_color(100, 100, 100);
 
 			if (wall.is_drawn)
-				wcolor = put_color(255, 0, 255);
+			{
+				if (wall.portal)
+					wcolor = put_color(0, 255, 0);
+				else
+					wcolor = put_color(255, 0, 255);
+			}
+			wall.is_drawn = false;
 
 			m_canvas.draw_line((half_screen + (p1_world_pos)).As<i32>(), (half_screen + (p2)).As<i32>(), wcolor);
 			p1_world_pos = p2;
 		}
+
+		sector = sector->next_sector;
 	}
 }
 
 void Raycast_World::draw_first_person()
 {
-	Sector*& player_sector = game_state->player.sector;
+	Memory_Arena draw_mem;
+	init_memory_arena(&draw_mem, m_game_memory.next_free, memory_arena_available_space(&m_game_memory));
+
+	Sector*& player_sector = m_player->sector;
 	
 	ASSERT(player_sector);
 
@@ -254,31 +298,63 @@ void Raycast_World::draw_first_person()
 	info.source_floor = player_sector->floor;
 	info.source_ceiling = player_sector->ceiling;
 		
-	draw_sector(player_sector, info);
+	draw_sector(player_sector, info, &draw_mem);
+	
+	memory_arena_clear(&draw_mem);
 }
 
-void Raycast_World::draw_sector(Sector* sector, Render_Sector_Info info)
+void Raycast_World::draw_debug_info()
 {
-	View& view = game_state->player.view;
+	v2i pos = { 10,10 };
+	u32 col = MAGENTA;
+
+	m_canvas.draw_text("PLAYER: x: " + std::to_string(m_player->view.position.x) + " y: " + std::to_string(m_player->view.position.y), pos, col);
+	pos.y += m_canvas.s_build_in_font_char_height;
+	
+
+	static bool look_direction_in_radians = true;
+	if (m_platform.get_keyboard_state(Key_Code::G).is_pressed())
+		look_direction_in_radians = !look_direction_in_radians;
+	if (look_direction_in_radians)
+	{
+		m_canvas.draw_text("PLAYER: a (RAD): " + std::to_string(m_player->view.look_direction), pos, col);
+		pos.y += m_canvas.s_build_in_font_char_height;
+		m_canvas.draw_text("PLAYER: FOV (RAD): " + std::to_string(m_player->view.fov), pos, col);
+	}
+	else
+	{
+		m_canvas.draw_text("PLAYER: a (DEG): " + std::to_string(rad_to_deg(m_player->view.look_direction)), pos, col);
+		pos.y += m_canvas.s_build_in_font_char_height;
+		m_canvas.draw_text("PLAYER: FOV (DEG): " + std::to_string(rad_to_deg(m_player->view.fov)), pos, col);
+	}
+	pos.y += m_canvas.s_build_in_font_char_height;
+}
+
+void Raycast_World::draw_sector(Sector* sector, Render_Sector_Info info, Memory_Arena* mem_arena)
+{
+	View& view = m_player->view;
 
 	if (sector->wall_count < 2)
 		return;
 
-	Wall_Info sector_walls[Level::s_sector_wall_max];
+	Wall_Info* sector_walls = (Wall_Info*)push_struct_into_mem_arena_(mem_arena, sizeof(Wall_Info)*sector->wall_count);
 
-	i32 half_screen_height = (i32)m_canvas.height() / 2;
+	i32 screen_height = (i32)m_canvas.height();
+	i32 half_screen_height = screen_height / 2;
+	i32 screen_width = (i32)m_canvas.width();
 
 	sort_sector_walls(sector_walls, sector);
 
 	for (u32 w = 0; w < sector->wall_count; w++)
 	{
-		Wall_Info wi = sector_walls[w];
-		if (wi.wall == info.ignore_target)
-			continue;
+		Wall_Info wi = sector_walls[w];	
 
+		//These points come in; in view space, that is different from screen space.
+		//View space is just relative to the camera position/orientation, but dimensions are still in world space,
+		//and effectively top down; meaning that y is treated like z in 3D.
 		v2f& p1 = wi.view_space_p1;
 		v2f& p2 = wi.view_space_p2;
-	
+
 		//If both points are behind the view, continue.
 		if (p1.y <= 0 && p2.y <= 0)
 			continue;
@@ -320,25 +396,37 @@ void Raycast_World::draw_sector(Sector* sector, Render_Sector_Info info)
 		r1 = atanf(p1.x / p1.y);
 		r2 = atanf(p2.x / p2.y);
 
+		
+
 		//Calculate the start and end x values relative to screen size.
-		i32 x1 = (i32)((0.5f + r1 / view.fov) * (m_canvas.width() - 1));
-		i32 x2 = (i32)((0.5f + r2 / view.fov) * (m_canvas.width() - 1));
+		//Covert x values from view space into pixel space.
+		i32 x1 = round_to_int((r1 / view.fov + 0.5f) * (screen_width - 1));
+		i32 x2 = round_to_int((r2 / view.fov + 0.5f) * (screen_width - 1));
+		ASSERT(x1 < screen_width && x2 < screen_width);
+
 
 		if (x1 == x2)
 			continue;
 
-		const i32 sector_height = sector->height();
+		if (wi.wall == info.ignore_target)
+		{
+			wi.wall->is_drawn = true;
+			continue;
+		}
 
-		const i32 h1 = (i32)(sector_height / p1.y) / 2;
-		const i32 h2 = (i32)(sector_height / p2.y) / 2;
+		i32 sector_height = sector->height();
 
-		const f32 eye_to_sector_ratio = (f32)(view.look_height + info.height_offset) / sector_height;
+		f32 h1 = (f32)sector_height / p1.y;
+		f32 h2 = (f32)sector_height / p2.y;
 
-		v2i bot1{ x1, (i32)(half_screen_height + h1 * eye_to_sector_ratio) };
-		v2i bot2{ x2, (i32)(half_screen_height + h2 * eye_to_sector_ratio) };
-		v2i top1{ x1, bot1.y - h1 };
-		v2i top2{ x2, bot2.y - h2 };
+		f32 eye_to_sector_ratio = (f32)(view.look_height + info.height_offset) / sector_height;
 
+		v2i bot1{ x1, (i32)(half_screen_height + round_to_int(h1 * eye_to_sector_ratio + 0.5f)) }; 
+		v2i bot2{ x2, (i32)(half_screen_height + round_to_int(h2 * eye_to_sector_ratio + 0.5f)) };  
+		v2i top1{ x1, round_to_int(bot1.y - h1 - 0.5f) };										     
+		v2i top2{ x2, round_to_int(bot2.y - h2 - 0.5f) };										     
+	
+		
 		//if x2 is on left side, swap points.
 		if (x2 < x1)
 		{
@@ -348,32 +436,35 @@ void Raycast_World::draw_sector(Sector* sector, Render_Sector_Info info)
 		}
 
 		//loop form left to right drawring linearly interpolated columns, between segment end points.
-		const f32 m_top = slope(top1, top2);
-		const f32 m_bot = slope(bot1, bot2);
+		f32 m_top = slope(top1, top2);
+		f32 m_bot = slope(bot1, bot2);
 
-		const f32 shading_factor = 1.f - std::min(0.2f, std::abs(m_top));
-		const f32 floor_shading_factor = 1.f - ((f32)(info.source_floor - sector->floor) / 1000);
-		const f32 ceiling_shading_factor = 1.f - ((f32)(info.source_ceiling - sector->ceiling) / 1000);
+		f32 shading_factor = 1.f - min(0.2f, std::abs(m_top));
+		f32 floor_shading_factor = 1.f - ((f32)(m_player->view.look_height - sector->floor) / 1000);
+		f32 ceiling_shading_factor = 1.f - ((f32)(m_player->view.look_height - sector->ceiling) / 1000);
 
 		u32 wall_color = multiply_accross_color_channels(wi.wall->color, shading_factor);
 		
 		u32 ceiling_color = multiply_accross_color_channels(put_color(0, 0, 178), ceiling_shading_factor);;
 		u32 floor_color = multiply_accross_color_channels(put_color(0, 178, 0), floor_shading_factor);
 
-		i32 x_start = std::max(x1, std::max(info.x_min, 0));
-		i32 x_end	= std::min(x2, std::min(info.x_max, (i32)m_canvas.width() - 1));
+		i32 x_start = max(x1, max(info.x_min, 0));
+		i32 x_end	= min(x2, min(info.x_max, screen_width - 1));
 
 		bool wall_not_drawn = true;
 
 		if (wi.wall->portal)
 		{
-			i32 floor_dif = wi.wall->portal->floor - sector->floor;
-			i32 ceiling_dif = sector->ceiling - wi.wall->portal->ceiling;
+			i32 portal_floor = wi.wall->portal->sector->floor;
+			i32 portal_ceiling = wi.wall->portal->sector->ceiling;
+
+			i32 floor_dif = portal_floor - sector->floor;
+			i32 ceiling_dif = sector->ceiling - portal_ceiling;
 			f32 ceiling_ratio = (f32)ceiling_dif / sector_height;
 			f32 floor_ratio = (f32)floor_dif / sector_height;
 			
 			//NOTE: Maybe checking that the floor is less than the ceiling shouled be an assert instead.
-			if (floor_dif < sector_height && ceiling_dif < sector_height && wi.wall->portal->floor < wi.wall->portal->ceiling)
+			if (floor_dif < sector_height && ceiling_dif < sector_height && portal_floor < portal_ceiling)
 			{
 				wall_not_drawn = false;
 
@@ -405,20 +496,20 @@ void Raycast_World::draw_sector(Sector* sector, Render_Sector_Info info)
 					
 #
 #if 1			//Funky hack!
-				rsi.left_y_bot += 1;
-				if(rsi.left_y_top > 0)
-					rsi.left_y_top -= 1;
-				rsi.right_y_bot += 1;
-				if (rsi.right_y_top > 0)
-					rsi.right_y_top -= 1;
+				rsi.left_y_bot += 2;
+				//if(rsi.left_y_top > 0)
+				rsi.left_y_top -= 2;
+				rsi.right_y_bot += 2;
+				//if (rsi.right_y_top > 0)
+				rsi.right_y_top -= 2;
 
 #endif
-				rsi.ignore_target = wi.wall->portal_wall;
+				rsi.ignore_target = wi.wall->portal;
 				rsi.height_offset = info.height_offset + floor_dif * -1;
 				rsi.source_floor = sector->floor;
 				rsi.source_ceiling = sector->ceiling;
 
-				draw_sector(wi.wall->portal, rsi);
+				draw_sector(wi.wall->portal->sector, rsi, mem_arena);
 
 				for (i32 x = x_start; x <= x_end; x++)
 				{
@@ -434,14 +525,14 @@ void Raycast_World::draw_sector(Sector* sector, Render_Sector_Info info)
 					i32 y2 = (i32)(bot1.y + m_bot * (x - bot1.x));
 					i32 og_y2 = y2;
 					i32 bot_limit = round_to_int( linear_interpolation({ (f32)info.x_min, (f32)info.left_y_bot }, { (f32)info.x_max, (f32)info.right_y_bot }, (f32)x) );
-					if (bot_limit > (i32)m_canvas.height() - 1)
-						bot_limit = (i32)m_canvas.height() - 1;
+					if (bot_limit > screen_height - 1)
+						bot_limit = screen_height - 1;
 
 					if (y2 > bot_limit)
 						y2 = bot_limit;
 
 					//draw ceiling
-					if (y1 > top_limit)
+					if (y1 > top_limit && y1 < bot_limit)
 						m_canvas.draw_vertical_column(x, top_limit, y1 - 1, ceiling_color);
 
 					i32 true_column_height = og_y2 - og_y1;
@@ -449,7 +540,7 @@ void Raycast_World::draw_sector(Sector* sector, Render_Sector_Info info)
 					if (floor_dif > 0)
 					{
 						//Need to draw some of the wall if the other sector floor is higher or if the other sector ceiling is lower.
-						i32 floor_wall_height = (i32)(true_column_height * floor_ratio);
+						i32 floor_wall_height = round_to_int((f32)true_column_height * floor_ratio);
 						i32 floor_wall_y1 = og_y2 - floor_wall_height;
 						if (floor_wall_y1 < y1)
 							floor_wall_y1 = y1;
@@ -468,7 +559,7 @@ void Raycast_World::draw_sector(Sector* sector, Render_Sector_Info info)
 						if (ceiling_wall_y1 < y1)
 							ceiling_wall_y1 = y1;
 
-						i32 ceiling_wall_height = (i32)(true_column_height * ceiling_ratio);
+						i32 ceiling_wall_height = round_to_int((f32)true_column_height * ceiling_ratio);
 						
 						i32 ceiling_wal_y2 = og_y1 + ceiling_wall_height;
 						if (ceiling_wal_y2 > bot_limit)
@@ -479,7 +570,7 @@ void Raycast_World::draw_sector(Sector* sector, Render_Sector_Info info)
 					}
 
 					//draw floor
-					if (y2 < bot_limit)
+					if (y2 < bot_limit && y2 >= -1)
 						m_canvas.draw_vertical_column(x, y2 + 1, bot_limit, floor_color);
 				}
 			}
@@ -494,13 +585,13 @@ void Raycast_World::draw_sector(Sector* sector, Render_Sector_Info info)
 				if (top_limit < 0)
 					top_limit = 0;
 
-				if (y1 < top_limit)
-					y1 = top_limit;
-
 				i32 y2 = (i32)(bot1.y + m_bot * (x - bot1.x));
 				i32 bot_limit = round_to_int( linear_interpolation({ (f32)info.x_min, (f32)info.left_y_bot }, { (f32)info.x_max, (f32)info.right_y_bot }, (f32)x) );
-				if (bot_limit > (i32)m_canvas.height() - 1)
-					bot_limit = (i32)m_canvas.height() - 1;
+				if (bot_limit > screen_height - 1)
+					bot_limit = screen_height - 1;
+
+				if (y1 < top_limit)
+					y1 = top_limit;
 
 				if (y2 > bot_limit)
 					y2 = bot_limit;
@@ -508,20 +599,20 @@ void Raycast_World::draw_sector(Sector* sector, Render_Sector_Info info)
 				if (y2 < top_limit)
 					y2 = top_limit;
 				
-
-				//draw ceiling
-				if (y1 > top_limit)
-					m_canvas.draw_vertical_column(x, top_limit, y1 - 1, ceiling_color);
-
-				//draw wall
 				if (y1 < y2)
-					m_canvas.draw_vertical_column(x, y1, y2, wall_color);
+				{
+					//draw ceiling
+					if (y1 > top_limit)
+						m_canvas.draw_vertical_column(x, top_limit, y1 - 1, ceiling_color);
 
-				//draw floor
-				if (y2 < bot_limit)
-					m_canvas.draw_vertical_column(x, y2 + 1, bot_limit, floor_color);
+					//draw wall
+					if (y1 < y2)
+						m_canvas.draw_vertical_column(x, y1, y2, wall_color);
 
-				y2 *= 10;
+					//draw floor
+					if (y2 < bot_limit)
+						m_canvas.draw_vertical_column(x, y2 + 1, bot_limit, floor_color);
+				}
 			}
 		}
 
@@ -531,11 +622,11 @@ void Raycast_World::draw_sector(Sector* sector, Render_Sector_Info info)
 
 void Raycast_World::sort_sector_walls(Wall_Info* output_buffer, Sector* sector)
 {
-	View& view = game_state->player.view;
+	View& view = m_player->view;
 
-	v2f p1_world_pos = flip_y(view.world_to_view((sector->first_wall + (sector->wall_count - 1))->world_pos));
+	v2f p1_world_pos = flip_y(view.world_to_view((get_sector_first_wall(sector) + (sector->wall_count - 1))->world_pos));
 
-	for (Wall_End* wp = sector->first_wall; wp < sector->first_wall + sector->wall_count; wp++)
+	for (Wall* wp = get_sector_first_wall(sector); wp < get_sector_first_wall(sector) + sector->wall_count; wp++)
 	{
 		Wall_Info wi;
 		wi.wall = wp;
@@ -548,7 +639,7 @@ void Raycast_World::sort_sector_walls(Wall_Info* output_buffer, Sector* sector)
 
 
 		//And idx is effectively the size of the sector_walls array as well.
-		i32 idx = (u32)(wp - sector->first_wall);
+		i32 idx = (u32)(wp - get_sector_first_wall(sector));
 
 		//Therefore by default we insert at the top.
 		i32 insert_at = idx;
@@ -567,13 +658,6 @@ void Raycast_World::sort_sector_walls(Wall_Info* output_buffer, Sector* sector)
 
 		output_buffer[insert_at] = wi;
 	}
-}
-
-void Raycast_World::reset_is_drawn_flags()
-{
-	for (u32 i = 0; i < level.m_wall_count; ++i)
-		level.m_walls[i].is_drawn = false;
-	
 }
 
 bool Raycast_World::is_segment_on_screen(const v2f sp_p1, const v2f sp_p2, const f32 max_distance, const View& view)

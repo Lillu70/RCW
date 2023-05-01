@@ -110,6 +110,8 @@ TW_Platform_Call_Table win32_get_call_table()
 	ct.get_pixel_buffer_width		= win32_get_pixel_buffer_width;
 	ct.set_fullscreen				= win32_set_fullscreen;
 	ct.output_debug_string			= win32_output_debug_string;
+	ct.get_window_width				= win32_get_window_width;
+	ct.get_window_height			= wind32_get_window_height;
 
 	return ct;
 }
@@ -130,7 +132,10 @@ void win32_init(HINSTANCE instance, TW_App_Config config)
 		win_class.lpfnWndProc = tw_windows_callback;
 		win_class.hInstance = s_core.instance;
 		win_class.lpszClassName = "TinyWindow_Class";
+		
 
+		win_class.hCursor = LoadCursorA(0, (LPCSTR)IDC_CROSS);
+		
 		if (!RegisterClassA(&win_class))
 			TW_TERMINATE("Registering the window class failed.");
 
@@ -343,7 +348,8 @@ u32* win32_do_resize_pixel_buffer(i32 new_width, i32 new_height)
 	s_bitmap.info.bmiHeader.biWidth = new_width;
 	s_bitmap.info.bmiHeader.biHeight = new_height * -1;
 	//^ windows defaults to drawring from bottom left, 
-	//setting the bit map height to negative tells it to draw from top left instead.
+	// setting the bit map height to negative tells it to draw from top left instead.
+	// Note: in processes of being changed.
 
 	u64 pixel_area = (u64)new_width * new_height;
 	u64 bitmap_memory_reg = pixel_area * s_bitmap.bytes_per_pixel;
@@ -357,6 +363,16 @@ Controller_State win32_get_controller_state(i32 idx)
 {
 	TW_ASSERT(idx >= 0 && idx < s_input.max_controllers, "Controller index array out of bounds!");
 	return s_input.controller_state[idx];
+}
+
+u32 win32_get_window_width()
+{
+	return s_app.window_width;
+}
+
+u32 wind32_get_window_height()
+{ 
+	return s_app.window_height;
 }
 
 void win32_output_debug_string(const char* str)
