@@ -57,7 +57,11 @@ struct Player
 	Sector* sector;
 	View view;
 
-	f32 movement_speed = 10.f;
-	f32 turning_speed = 3.f;
+	v2f position = 0;
+	v2f velocity = 0;
+	f32 turning_velocity = 0;
+	
+	f32 acceleration_speed = 30.f;
+	f32 turning_speed = 12.f;
 };
 

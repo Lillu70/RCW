@@ -70,9 +70,9 @@ Raycast_World::Raycast_World(TW_Platform_Call_Table platform, void* game_state_m
 #endif
 
 	m_player->sector = m_first_sector;
+	m_player->position = { 15, 15 };
 	{
 		View& player_view = m_player->view;
-		player_view.position = { 15, 15 };
 		player_view.set_look_direction(deg_to_rad(0));
 		player_view.scale = 0.5;
 		player_view.set_fov(PI32 / 3);
@@ -84,142 +84,172 @@ void Raycast_World::update()
 {
 	if (!m_platform.get_is_focused()) return;
 	
-	process_input();
+	Controller_State controller = m_platform.get_controller_state(0);
+	f32 delta_time = m_platform.get_frame_time();
+
+	process_input(&controller, delta_time);
+
+	handle_player_movement(&controller, delta_time);
 
 	m_canvas.clear(MAGENTA);
-	
+
 	draw_first_person();
 
-	draw_top_down();
-
-	draw_debug_info();
+	static bool draw_debug = true;
+	if (m_platform.get_keyboard_state(Key_Code::F1).is_released())
+		draw_debug = !draw_debug;
+	if (draw_debug)
+	{
+		draw_top_down();
+		draw_debug_info();
+	}
 }
 
-void Raycast_World::process_input()
+void Raycast_World::handle_player_movement(Controller_State* controller, f32 delta_time)
+{
+	f32 t = delta_time;
+
+	{ //Player rotation
+		f32 la = 0;
+		
+		f32 r_stick;
+		if (controller->get_right_stick_x(r_stick))
+			la = -r_stick;
+		
+		else
+		{
+			if (m_platform.get_keyboard_button_down(Key_Code::LEFT))
+				la = 1.f;
+
+			if (m_platform.get_keyboard_button_down(Key_Code::RIGHT))
+				la = -1.f;
+		}
+
+		if (la != 0)
+		{
+			la *= 15.f;
+			la += m_player->turning_velocity * -5.f;
+			f32 l1 = m_player->view.look_direction;
+			f32 lv = la * t + m_player->turning_velocity;
+			m_player->turning_velocity = lv;
+
+			f32 l = la * 0.5f * square(t) + lv * t + l1;
+			m_player->view.set_look_direction(l);
+		}
+		else
+			m_player->turning_velocity = 0.f;
+		
+	}
+
+	//P1 (position) (1/2)a*(t*t)+v*t+p<(old position)
+	//P2 (velocity) a*t+v<(old velocity)
+	//P3 (acceleration) input
+	v2f a = get_acceleration_vector(controller) * m_player->acceleration_speed;
+	a += -m_player->velocity * 5.f;
+
+	v2f p1 = m_player->position;
+	v2f v = a * t + m_player->velocity;
+	m_player->velocity = v;
+
+	v2f p = a * 0.5f * square(t) + v * t + p1;
+
+	Sector* sector = m_player->sector;
+	Wall* first_wall = get_sector_first_wall(sector);
+	
+	// super simple collision and sector detection
+	//TODO: Better collision system than this shite.
+	if (!point_inside_sector(p, sector))
+	{
+		bool player_in_valid_sector = false;
+		for (Wall* w = first_wall; w < first_wall + sector->wall_count; ++w)
+		{
+			if (w->portal && point_inside_sector(p, w->portal->sector))
+			{
+				player_in_valid_sector = true;
+				m_player->sector = w->portal->sector;
+			}
+		}
+
+		if (!player_in_valid_sector)
+			p = m_player->position;
+		
+	}
+	m_player->position = p;
+	
+
+	m_player->view.position = m_player->position;
+}
+
+
+v2f Raycast_World::get_acceleration_vector(Controller_State* controller)
+{
+	v2f acceleration = 0;
+
+	f32 stick_val_x = 0;
+	f32 stick_val_y = 0;
+	bool stick_b_x = controller->get_left_stick_x(stick_val_x);
+	bool stick_b_y = controller->get_left_stick_y(stick_val_y);
+	if (stick_b_x || stick_b_y)
+	{
+		acceleration.y += m_player->view.look_cos * -stick_val_y;
+		acceleration.x += m_player->view.look_sin * -stick_val_y;
+		
+		acceleration.y -= cosf(m_player->view.look_direction + (f32)(PI / 2)) * -stick_val_x;
+		acceleration.x -= sinf(m_player->view.look_direction + (f32)(PI / 2)) * -stick_val_x;
+	}
+	else
+	{
+		if (controller->get_button_down(Button::DPAD_UP) || m_platform.get_keyboard_button_down(Key_Code::W))
+		{
+			acceleration.y -= m_player->view.look_cos;
+			acceleration.x -= m_player->view.look_sin;
+		}
+
+		if (controller->get_button_down(Button::DPAD_DOWN) || m_platform.get_keyboard_button_down(Key_Code::S))
+		{
+			acceleration.y += m_player->view.look_cos;
+			acceleration.x += m_player->view.look_sin;
+		}
+
+		if (controller->get_button_down(Button::DPAD_LEFT) || m_platform.get_keyboard_button_down(Key_Code::A))
+		{
+			acceleration.y -= cosf(m_player->view.look_direction + (f32)(PI / 2));
+			acceleration.x -= sinf(m_player->view.look_direction + (f32)(PI / 2));
+		}
+
+		if (controller->get_button_down(Button::DPAD_RIGHT) || m_platform.get_keyboard_button_down(Key_Code::D))
+		{
+			acceleration.y += cosf(m_player->view.look_direction + (f32)(PI / 2));
+			acceleration.x += sinf(m_player->view.look_direction + (f32)(PI / 2));
+		}
+	}
+
+	return acceleration;
+}
+
+void Raycast_World::process_input(Controller_State* controller, f32 delta_time)
 {
 	if (m_platform.get_keyboard_state(Key_Code::F11).is_released())
 		m_platform.set_fullscreen(!m_platform.get_is_fullscreen());
-
-	Controller_State controller = m_platform.get_controller_state(0);
-	f32 delta_time = m_platform.get_frame_time();
 
 	if (m_platform.get_keyboard_state(Key_Code::ESC).is_released())
 		m_platform.do_close();
 
 	View& player_view = m_player->view;
-	v2f player_pos = player_view.position;
-	f32 turn_speed = m_player->turning_speed;
 
-	f32 r_stick;
-	if (controller.get_right_stick_x(r_stick))
-	{
-		player_view.set_look_direction(player_view.look_direction += delta_time * turn_speed * r_stick * -1);
-	}
-	else
-	{
-		if (m_platform.get_keyboard_button_down(Key_Code::LEFT))
-			player_view.set_look_direction(player_view.look_direction += delta_time * turn_speed);
-
-		if (m_platform.get_keyboard_button_down(Key_Code::RIGHT))
-			player_view.set_look_direction(player_view.look_direction -= delta_time * turn_speed);
-	}
-
-	f32 movement_speed = m_player->movement_speed;
-
-	f32 stick_val_x = 0; f32 stick_val_y = 0;
-	bool stick_b_x = controller.get_left_stick_x(stick_val_x);
-	bool stick_b_y = controller.get_left_stick_y(stick_val_y);
-
-	if (stick_b_x || stick_b_y)
-	{
-		v2f movement_vector = { 0,0 };
-
-		movement_vector.x += player_view.look_cos * stick_val_y * movement_speed * delta_time * -1;
-		movement_vector.y += player_view.look_sin * stick_val_y * movement_speed * delta_time * -1;
-
-		movement_vector.x -= cosf(player_view.look_direction + (f32)(PI / 2)) * stick_val_x * movement_speed * delta_time * -1;
-		movement_vector.y -= sinf(player_view.look_direction + (f32)(PI / 2)) * stick_val_x * movement_speed * delta_time * -1;
-
-		player_view.position.x += movement_vector.y;
-		player_view.position.y += movement_vector.x;
-	}
-	else
-	{
-		v2f movement_vector = { 0,0 };
-
-		if (controller.get_button_down(Button::DPAD_UP) || m_platform.get_keyboard_button_down(Key_Code::W))
-		{
-			movement_vector.x -= player_view.look_cos;
-			movement_vector.y -= player_view.look_sin;
-		}
-
-		if (controller.get_button_down(Button::DPAD_DOWN) || m_platform.get_keyboard_button_down(Key_Code::S))
-		{
-			movement_vector.x += player_view.look_cos;
-			movement_vector.y += player_view.look_sin;
-		}
-
-		if (controller.get_button_down(Button::DPAD_LEFT) || m_platform.get_keyboard_button_down(Key_Code::A))
-		{
-			movement_vector.x -= cosf(player_view.look_direction + (f32)(PI / 2));
-			movement_vector.y -= sinf(player_view.look_direction + (f32)(PI / 2));
-		}
-
-		if (controller.get_button_down(Button::DPAD_RIGHT) || m_platform.get_keyboard_button_down(Key_Code::D))
-		{
-			movement_vector.x += cosf(player_view.look_direction + (f32)(PI / 2));
-			movement_vector.y += sinf(player_view.look_direction + (f32)(PI / 2));
-		}
-
-		if (movement_vector != v2f(0, 0))
-		{
-			movement_vector = normalize(movement_vector);
-			movement_vector = movement_vector * delta_time * movement_speed;
-			player_view.position.x += movement_vector.y;
-			player_view.position.y += movement_vector.x;
-		}
-	}
-
-	if (player_pos != player_view.position && !point_inside_sector(player_view.position, m_player->sector))
-	{
-		bool sector_found = false;
-		Sector* sector = m_first_sector;
-		while (sector)
-		{
-			if (point_inside_sector(player_view.position, sector))
-			{
-				sector_found = true;
-				m_player->sector = sector;
-				break;
-			}
-
-			sector = sector->next_sector;
-		}
-
-#if 1
-
-		if (!sector_found)
-			player_view.position = player_pos;
-#endif
-	}
-
-	if (controller.get_button_down(Button::L_SHLD) || m_platform.get_keyboard_button_down(Key_Code::F5))
+	if (controller->get_button_down(Button::L_SHLD) || m_platform.get_keyboard_button_down(Key_Code::F5))
 	{
 		f32 new_fov = player_view.fov - delta_time;
 		new_fov = max(PI32/10, new_fov);
 		player_view.set_fov(new_fov);
-		
-	
 	}
 
-	if (controller.get_button_down(Button::R_SHLD) || m_platform.get_keyboard_button_down(Key_Code::F6))
+	if (controller->get_button_down(Button::R_SHLD) || m_platform.get_keyboard_button_down(Key_Code::F6))
 	{
 		f32 new_fov = player_view.fov + delta_time;
 		new_fov = min(PI32 - PI32 / 10, new_fov);
 		player_view.set_fov(new_fov);
-
 	}
-
 }
 
 void Raycast_World::draw_top_down()
@@ -308,7 +338,7 @@ void Raycast_World::draw_debug_info()
 	v2i pos = { 10,10 };
 	u32 col = MAGENTA;
 
-	m_canvas.draw_text("PLAYER: x: " + std::to_string(m_player->view.position.x) + " y: " + std::to_string(m_player->view.position.y), pos, col);
+	m_canvas.draw_text("PLAYER: x: " + std::to_string(m_player->position.x) + " y: " + std::to_string(m_player->position.y), pos, col);
 	pos.y += m_canvas.s_build_in_font_char_height;
 	
 
@@ -327,6 +357,9 @@ void Raycast_World::draw_debug_info()
 		pos.y += m_canvas.s_build_in_font_char_height;
 		m_canvas.draw_text("PLAYER: FOV (DEG): " + std::to_string(rad_to_deg(m_player->view.fov)), pos, col);
 	}
+	pos.y += m_canvas.s_build_in_font_char_height;
+
+	m_canvas.draw_text("VEL: x: " + std::to_string(m_player->velocity.x) + " y: " + std::to_string(m_player->velocity.x), pos, col);
 	pos.y += m_canvas.s_build_in_font_char_height;
 }
 
