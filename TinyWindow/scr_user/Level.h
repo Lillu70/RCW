@@ -1,7 +1,7 @@
 #pragma once
 #include "Types.h"
 #include "RCW_ASSERT.h"
-#include "Memory_Arena.h"
+#include "../Memory_Arena.h"
 
 
 struct Sector
@@ -80,7 +80,8 @@ struct Sector_Builder
 		ASSERT(next_address == mem_arena->next_free);
 
 		++last_sector->wall_count;
-		Wall* ptr = push_struct_into_mem_arena_with_placement(mem_arena, Wall, wall);
+		Wall* ptr = push_struct_into_mem_arena_without_init(mem_arena, Wall);
+		*ptr = wall;
 		ptr->sector = last_sector;
 		next_address = mem_arena->next_free;
 

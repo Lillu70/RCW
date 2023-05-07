@@ -13,7 +13,6 @@ Raycast_World::Raycast_World(TW_Platform_Call_Table platform, void* game_state_m
 	init_memory_arena(&m_game_memory, game_state_memory, game_state_memory_size);
 	
 	m_player = push_struct_into_mem_arena(&m_game_memory, Player);
-
 #if 0
 	u32 window_width = m_platform.get_window_width();
 	u32 window_height = m_platform.get_window_height();
@@ -78,6 +77,9 @@ Raycast_World::Raycast_World(TW_Platform_Call_Table platform, void* game_state_m
 		player_view.set_fov(PI32 / 3);
 		player_view.calculate_view_segments();
 	}
+
+	void* file = m_platform.read_entire_file("Assets\\texture.bmp");
+
 }
 
 void Raycast_World::update()
@@ -95,9 +97,10 @@ void Raycast_World::update()
 
 	draw_first_person();
 
-	static bool draw_debug = true;
+	static bool draw_debug = false;
 	if (m_platform.get_keyboard_state(Key_Code::F1).is_released())
 		draw_debug = !draw_debug;
+	
 	if (draw_debug)
 	{
 		draw_top_down();
@@ -337,6 +340,9 @@ void Raycast_World::draw_debug_info()
 {
 	v2i pos = { 10,10 };
 	u32 col = MAGENTA;
+
+	m_canvas.draw_text("CWD: " + std::string(m_platform.get_cwd()), pos, col);
+	pos.y += m_canvas.s_build_in_font_char_height;
 
 	m_canvas.draw_text("PLAYER: x: " + std::to_string(m_player->position.x) + " y: " + std::to_string(m_player->position.y), pos, col);
 	pos.y += m_canvas.s_build_in_font_char_height;

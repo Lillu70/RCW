@@ -74,7 +74,10 @@
     <ClInclude Include="scr_user\RCW_ASSERT.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="scr_user\Memory_Arena.h">
+    <ClInclude Include="Memory_Arena.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TW_ASSERT.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

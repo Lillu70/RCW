@@ -1,18 +1,18 @@
 #pragma once
 
 #include "../TW_PLATFORM_INTERFACE.h"
+#include "../Memory_Arena.h"
 
 #define NOMINMAX
 #include <Windows.h>
-
 #include "TW_Sound.h"
-
 #include <string>
 
 
 #define KiB 1024
 #define MiB KiB * KiB
 #define GAME_STATE_MEMORY_SIZE MiB
+#define PLATFORM_STATE_MEMORY_SIZE MiB / 2
 
 struct TW_App_Config
 {
@@ -31,6 +31,10 @@ static void win32_init(HINSTANCE instance, TW_App_Config config);
 static void win32_flush_events();
 static void win32_update_surface();
 
+static void* win32_read_entire_file(const char* file_path);
+static void win32_free_file_memory(void* memory);
+static bool win32_write_entire_file(const char* file_path, u32 file_size, void* memory);
+
 static u32* win32_do_resize_pixel_buffer(i32 new_width, i32 new_height);
 static void win32_do_close();
 
@@ -48,7 +52,8 @@ static bool win32_get_keyboard_button_down(Key_Code key_code);
 static Button_State win32_get_keyboard_state(Key_Code key_code);
 static Controller_State win32_get_controller_state(i32 idx);
 static u32 win32_get_window_width();
-static u32 wind32_get_window_height();
+static u32 win32_get_window_height();
+static char* win32_get_cwd();
 
 static void win32_output_debug_string(const char* str);
 

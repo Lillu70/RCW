@@ -1,13 +1,6 @@
 #pragma once
 
-inline void abort() 
-{ 
-	int* ptr = 0;
-	*ptr = 0;
-}
+#include "../TW_ASSERT.h"
 
-#ifdef _DEBUG
-#define ASSERT(stament) if(!(stament)) abort();
-#else
-#define ASSERT(stament)
-#endif // _DEBUG
+#define ASSERT TW_ASSERT
+#define TERMINATE TW_TERMINATE

@@ -1,19 +1,20 @@
 #include "TW_App.h"
 #include <Xinput.h>
 
-
-#define TW_TERMINATE(X)										\
-{															\
-	OutputDebugStringA((std::string(X) + "\n").c_str());	\
-	abort();												\
+#define TERMINATE_WIN32(X)			\
+{									\
+	OutputDebugStringA(X);			\
+	OutputDebugStringA("\n\n");		\
+	CNB;							\
 }
 
 #ifdef _DEBUG
-#define TW_ASSERT(X, MESSAGE)		\
+#define ASSERT_WIN32(X, MESSAGE)	\
 if(!(X))							\
 {									\
 	OutputDebugStringA(MESSAGE);	\
-	abort();						\
+	OutputDebugStringA("\n\n");		\
+	CNB;							\
 }								
 #else
 #define TW_ASSERT(X, MESSAGE);
@@ -33,6 +34,8 @@ struct WIN32_CORE
 	HINSTANCE instance = nullptr;
 	HWND window = nullptr;
 	void* game_state_memory = nullptr;
+	Memory_Arena platform_state_memory;
+	char* cwd = nullptr;
 };
 static WIN32_CORE s_core;
 
@@ -40,9 +43,9 @@ struct WIN32_BITMAP
 {
 	inline static constexpr i32 bytes_per_pixel = 4;
 
+	u32* memory = nullptr;
 	BITMAPINFO info{};
 	i32 width = 0, height = 0;
-	u32* memory = nullptr;
 };
 static WIN32_BITMAP s_bitmap;
 
@@ -73,15 +76,15 @@ static WIN32_INPUT s_input;
 
 struct WIN32_TIME
 {
-	i64 timer_counter_freg = 0;
-	LARGE_INTEGER last_time_counter;
 	f32 frame_time = 0;
 	f32 accum_frame_time = 0;
 	i32 frame_counter = 1;
 	i32 frames_per_second = 0;
+	i64 timer_counter_freg = 0;
 	u64 frame_start_cpu_stamp = 0;
 	u64 accum_cpu_cycles = 0;
 	u64 cycles_per_second = 0;
+	LARGE_INTEGER last_time_counter;
 };
 static WIN32_TIME s_time;
 
@@ -111,7 +114,11 @@ TW_Platform_Call_Table win32_get_call_table()
 	ct.set_fullscreen				= win32_set_fullscreen;
 	ct.output_debug_string			= win32_output_debug_string;
 	ct.get_window_width				= win32_get_window_width;
-	ct.get_window_height			= wind32_get_window_height;
+	ct.get_window_height			= win32_get_window_height;
+	ct.get_cwd						= win32_get_cwd;
+	ct.read_entire_file				= win32_read_entire_file;
+	ct.free_file_memory				= win32_free_file_memory;
+	ct.write_entire_file			= 0;
 
 	return ct;
 }
@@ -119,7 +126,7 @@ TW_Platform_Call_Table win32_get_call_table()
 void win32_init(HINSTANCE instance, TW_App_Config config)
 {
 	if (s_core.instance != nullptr)
-		TW_TERMINATE("App already initialized");
+		TERMINATE_WIN32("App already initialized");
 
 	s_core.instance = instance;
 	s_app.title = config.title;
@@ -137,7 +144,7 @@ void win32_init(HINSTANCE instance, TW_App_Config config)
 		win_class.hCursor = LoadCursorA(0, (LPCSTR)IDC_CROSS);
 		
 		if (!RegisterClassA(&win_class))
-			TW_TERMINATE("Registering the window class failed.");
+			TERMINATE_WIN32("Registering the window class failed.");
 
 		//Windows behavior here is whacky.
 		//https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-createwindowexa
@@ -152,7 +159,7 @@ void win32_init(HINSTANCE instance, TW_App_Config config)
 		s_core.window = CreateWindowExA(0, win_class.lpszClassName, config.title.c_str(),
 			win_style_flags, config.window_position_x, config.window_position_y, config.window_width, config.window_height, 0, 0, s_core.instance, 0);
 
-		if (!s_core.window) TW_TERMINATE("Creating the window failed.");
+		if (!s_core.window) TERMINATE_WIN32("Creating the window failed.");
 		
 		s_core.dc = GetDC(s_core.window);
 	}
@@ -184,7 +191,21 @@ void win32_init(HINSTANCE instance, TW_App_Config config)
 		s_time.frame_start_cpu_stamp = __rdtsc();
 	}
 
-	s_core.game_state_memory = VirtualAlloc(0, GAME_STATE_MEMORY_SIZE, MEM_COMMIT, PAGE_READWRITE);
+	//Alloc big block of memory.
+	s_core.game_state_memory = VirtualAlloc(0, GAME_STATE_MEMORY_SIZE + PLATFORM_STATE_MEMORY_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	
+	//Partition a portion at end of mem block for the platform layer.
+	init_memory_arena(&s_core.platform_state_memory, (u8*)s_core.game_state_memory + GAME_STATE_MEMORY_SIZE, PLATFORM_STATE_MEMORY_SIZE);
+
+
+	{ // Write cwd, in the platform memory.
+
+		// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getcurrentdirectory
+		s_core.cwd = (char*)s_core.platform_state_memory.start;
+		LPSTR write_buffer = (LPSTR)s_core.cwd;
+		DWORD write_buffer_lenght = GetCurrentDirectoryA(PLATFORM_STATE_MEMORY_SIZE, write_buffer) + 1;
+		push_struct_into_mem_arena_(&s_core.platform_state_memory, (u32)write_buffer_lenght);
+	}
 }
 
 void win32_flush_events()
@@ -192,7 +213,7 @@ void win32_flush_events()
 	MSG message;
 	while (BOOL message_result = PeekMessage(&message, 0, 0, 0, PM_REMOVE) != 0)
 	{
-		if (message_result == -1) TW_TERMINATE("GetMessage encountered an error.");
+		if (message_result == -1) TERMINATE_WIN32("GetMessage encountered an error.");
 
 		TranslateMessage(&message);
 		DispatchMessageA(&message);
@@ -336,8 +357,8 @@ static LRESULT tw_windows_callback(HWND win_handle, UINT message, WPARAM wparam,
 
 u32* win32_do_resize_pixel_buffer(i32 new_width, i32 new_height)
 {
-	TW_ASSERT(new_width >= 0, "Pixel buffer width has to be a value greater than 0");
-	TW_ASSERT(new_height >= 0, "Pixel buffer hegith has to be a value greater than 0");
+	ASSERT_WIN32(new_width >= 0, "Pixel buffer width has to be a value greater than 0");
+	ASSERT_WIN32(new_height >= 0, "Pixel buffer hegith has to be a value greater than 0");
 
 	s_bitmap.height = new_height;
 	s_bitmap.width = new_width;
@@ -357,27 +378,6 @@ u32* win32_do_resize_pixel_buffer(i32 new_width, i32 new_height)
 	s_bitmap.memory = new u32[pixel_area];
 
 	return s_bitmap.memory;
-}
-
-Controller_State win32_get_controller_state(i32 idx)
-{
-	TW_ASSERT(idx >= 0 && idx < s_input.max_controllers, "Controller index array out of bounds!");
-	return s_input.controller_state[idx];
-}
-
-u32 win32_get_window_width()
-{
-	return s_app.window_width;
-}
-
-u32 wind32_get_window_height()
-{ 
-	return s_app.window_height;
-}
-
-void win32_output_debug_string(const char* str)
-{
-	OutputDebugStringA(str);
 }
 
 void win32_set_fullscreen(bool enalbed)
@@ -411,6 +411,73 @@ void win32_set_fullscreen(bool enalbed)
 	s_app.is_fullscreen = enalbed;
 }
 
+static inline void* win32_close_handle_pass_result(HANDLE handle, void* result)
+{
+	BOOL file_closed = CloseHandle(handle);
+	ASSERT_WIN32(file_closed, "Closing file handle failed.");
+
+	return result;
+}
+
+void* win32_read_entire_file(const char* file_path)
+{
+	//TODO: Consider should this function should report something if it fails about why that happened.
+	//	* File didn't exists.
+	//  * VirtualAlloc failed.
+	//  * File size is too big.
+	//  * Read error.
+
+	//TODO: Replace VirtualAlloc. Instead use the platform state buffer for this.
+	//Requires a more sophisticated memory management than the Memory Arena.
+
+	HANDLE file_handle = CreateFileA(file_path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+	if (file_handle == INVALID_HANDLE_VALUE)
+		return win32_close_handle_pass_result(file_handle, 0);
+		
+	LARGE_INTEGER file_size;
+	BOOL get_file_size_succeeded = GetFileSizeEx(file_handle, &file_size);
+	if (!get_file_size_succeeded)
+		return win32_close_handle_pass_result(file_handle, 0);
+
+	ASSERT_WIN32(file_size.QuadPart <= 0xffffffff, "Files larger than u32 max are not supported.");
+
+	u32 file_size32 = (u32)file_size.QuadPart;
+
+	void* buffer = VirtualAlloc(0, file_size.QuadPart, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	if (!buffer)
+		return win32_close_handle_pass_result(file_handle, 0);
+
+	DWORD bytes_read;
+	BOOL file_read_succeeded = ReadFile(file_handle, buffer, file_size32, &bytes_read, 0);
+	if (!file_read_succeeded || bytes_read != file_size32)
+	{
+		win32_free_file_memory(buffer);
+		return win32_close_handle_pass_result(file_handle, 0);
+	}
+
+	return win32_close_handle_pass_result(file_handle, buffer);
+}
+
+void win32_free_file_memory(void* memory)
+{
+	ASSERT_WIN32(memory, "Memory is a nullptr");
+	BOOL succeeded = VirtualFree(memory, 0, MEM_RELEASE);
+	ASSERT_WIN32(succeeded, "Free failed.");
+}
+
+bool win32_write_entire_file(const char* file_path, u32 file_size, void* memory)
+{
+	//TODO: Implement win32_write_entire_file
+
+	return false;
+}
+
+Controller_State win32_get_controller_state(i32 idx)
+{
+	ASSERT_WIN32(idx >= 0 && idx < s_input.max_controllers, "Controller index array out of bounds!");
+	return s_input.controller_state[idx];
+}
+
 void win32_do_close() { s_app.is_running = false; }
 
 bool win32_get_is_running() { return s_app.is_running; }
@@ -435,7 +502,12 @@ bool win32_get_is_fullscreen() { return s_app.is_fullscreen; }
 
 bool win32_get_keyboard_button_down(Key_Code key_code) { return s_input.curr_keyboard_state[(i32)key_code]; }
 
-Button_State win32_get_keyboard_state(Key_Code key_code)
-{
-	return Button_State(s_input.curr_keyboard_state[(i32)key_code], s_input.prev_keyboard_state[(i32)key_code]);
-}
+u32 win32_get_window_width() { return s_app.window_width; }
+
+u32 win32_get_window_height() { return s_app.window_height;}
+
+char* win32_get_cwd() { return s_core.cwd; }
+
+void win32_output_debug_string(const char* str) { OutputDebugStringA(str); }
+
+Button_State win32_get_keyboard_state(Key_Code key_code) { return Button_State(s_input.curr_keyboard_state[(i32)key_code], s_input.prev_keyboard_state[(i32)key_code]); }
